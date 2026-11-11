@@ -76,7 +76,6 @@
       border-radius: 2px;
     }
     
-    /* 防变形：强行禁止换行，并加上宽裕的内外边距与高层级 */
     .hint-tooltip {
       position: absolute;
       bottom: -32px;
@@ -138,14 +137,7 @@
   </div>
 
   <script>
-    function hiraToKata(str) {
-      return wanakana ? wanakana.toKatakana(str) : str;
-    }
-
-    function toRomaji(str) {
-      return wanakana ? wanakana.toRomaji(str) : str;
-    }
-
+    // 基础词汇字典映射
     const LEXICON = [
       { text: '注意事項', kata: 'チュウイジコウ' },
       { text: '注意', kata: 'チュウイ' },
@@ -159,83 +151,12 @@
       { text: '提出', kata: 'テイシュツ' },
       { text: '期限', kata: 'キゲン' },
       { text: '最終', kata: 'サイシュウ' },
-      { text: '翌日', kata: 'ヨクジツ' },
-      { text: '未提出', kata: 'ミテイシュツ' },
-      { text: '不正', kata: 'フセイ' },
-      { text: '判明', kata: 'ハンメイ' },
-      { text: '減点', kata: 'ゲンテン' },
-      { text: '間違え', kata: 'マチガエ' },
-      { text: '項目', kata: 'コウモク' },
-      { text: '必須', kata: 'ヒッス' },
-      { text: '送信', kata: 'ソウシン' },
       { text: '日本語', kata: 'ニホンゴ' },
       { text: '名前', kata: 'ナマエ' },
       { text: '勉強', kata: 'ベンキョウ' },
       { text: '学校', kata: 'ガッコウ' },
       { text: '先生', kata: 'センセイ' }
     ];
-
-    function parseTextIntoWords(fullText) {
-      const result = [];
-      let i = 0;
-
-      while (i < fullText.length) {
-        let matched = false;
-
-        // 标点符号与特殊符号直接处理，不参与打字匹配阻塞
-        const char = fullText[i];
-        if ("（）()「」『』【】、。！？？!?:：;；\n\r\t ".includes(char)) {
-          result.push({
-            text: char,
-            kata: char,
-            romaji: char,
-            startIndex: i,
-            endIndex: i + 1,
-            isSymbol: true
-          });
-          i++;
-          continue;
-        }
-
-        for (const wordObj of LEXICON) {
-          if (fullText.startsWith(wordObj.text, i)) {
-            result.push({
-              text: wordObj.text,
-              kata: wordObj.kata,
-              romaji: toRomaji(wordObj.kata),
-              startIndex: i,
-              endIndex: i + wordObj.text.length,
-              isSymbol: false
-            });
-            i += wordObj.text.length;
-            matched = true;
-            break;
-          }
-        }
-
-        if (!matched) {
-          const isKanji = !!char.match(/[\u4e00-\u9faf\u3400-\u4dbf]/);
-          let kata = hiraToKata(char);
-          let romaji = toRomaji(char);
-
-          if (isKanji) {
-            kata = hiraToKata(char);
-            romaji = toRomaji(kata);
-          }
-
-          result.push({
-            text: char,
-            kata: kata,
-            romaji: romaji,
-            startIndex: i,
-            endIndex: i + 1,
-            isSymbol: false
-          });
-          i++;
-        }
-      }
-      return result;
-    }
 
     let targetText = '';
     let parsedWords = [];
@@ -250,15 +171,75 @@
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
 
-    // 自动跳过空格和标点符号
-    function autoSkipSymbols() {
-      while (targetIndex < targetText.length) {
-        const currentChar = targetText[targetIndex];
-        if ("（）()「」『』【】、。！？？!?:：;；\n\r\t ".includes(currentChar)) {
-          targetIndex++;
-        } else {
-          break;
+    function isSymbolChar(ch) {
+      return RegExp(/[\s\(\)\（\）\「\」\『\』\【\】\、\。\！\？\!\?\:\：\;\；]/).test(ch);
+    }
+
+    function parseTextIntoWords(fullText) {
+      const result = [];
+      let i = 0;
+
+      while (i < fullText.length) {
+        const char = fullText[i];
+
+        // 1. 标点符号直接过
+        if (isSymbolChar(char)) {
+          result.push({
+            text: char,
+            kata: char,
+            romaji: char,
+            startIndex: i,
+            endIndex: i + 1,
+            isSymbol: true
+          });
+          i++;
+          continue;
         }
+
+        // 2. 匹配词典
+        let matched = false;
+        for (const wordObj of LEXICON) {
+          if (fullText.startsWith(wordObj.text, i)) {
+            const rom = window.wanakana ? window.wanakana.toRomaji(wordObj.kata) : wordObj.kata;
+            result.push({
+              text: wordObj.text,
+              kata: wordObj.kata,
+              romaji: rom,
+              startIndex: i,
+              endIndex: i + wordObj.text.length,
+              isSymbol: false
+            });
+            i += wordObj.text.length;
+            matched = true;
+            break;
+          }
+        }
+
+        // 3. 兜底单字处理
+        if (!matched) {
+          let kata = char;
+          let romaji = char;
+          if (window.wanakana) {
+            kata = window.wanakana.toKatakana(char);
+            romaji = window.wanakana.toRomaji(char);
+          }
+          result.push({
+            text: char,
+            kata: kata,
+            romaji: romaji,
+            startIndex: i,
+            endIndex: i + 1,
+            isSymbol: false
+          });
+          i++;
+        }
+      }
+      return result;
+    }
+
+    function autoSkipSymbols() {
+      while (targetIndex < targetText.length && isSymbolChar(targetText[targetIndex])) {
+        targetIndex++;
       }
     }
 
@@ -320,7 +301,7 @@
 
     function handleInput() {
       if (isComposing) return;
-      autoSkipSymbols(); // 打字前先自动过滤掉符号
+      autoSkipSymbols();
 
       const val = typeInput.value;
       const rem = targetText.slice(targetIndex);
@@ -334,13 +315,13 @@
         targetIndex += matchLen;
         typeInput.value = '';
         lastActiveTime = Date.now();
-        autoSkipSymbols(); // 打完字后自动跳转到下一个有效字符
+        autoSkipSymbols();
         renderText(false);
       }
     }
 
     function resetGame() {
-      targetText = customTextEl.value.trim() || '注意事項課題の内容は授業資料に掲載しているので、授業資料を確認してください。';
+      targetText = customTextEl.value.trim() || '注意事項（課題の内容は授業資料に掲載しているので、授業資料を確認してください）';
       parsedWords = parseTextIntoWords(targetText);
       targetIndex = 0;
       autoSkipSymbols();
@@ -351,7 +332,15 @@
       typeInput.focus();
     }
 
+    customTextEl.addEventListener('input', resetGame);
     customTextEl.addEventListener('change', resetGame);
     typeInput.addEventListener('input', handleInput);
     typeInput.addEventListener('compositionstart', () => isComposing = true);
     typeInput.addEventListener('compositionend', () => { isComposing = false; handleInput(); });
+
+    // 确保 DOM 加载完毕后立即渲染
+    document.addEventListener('DOMContentLoaded', resetGame);
+    window.onload = resetGame;
+  </script>
+</body>
+</html>
