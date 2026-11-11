@@ -1,343 +1,136 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>日本語 打字练习工具</title>
+  <title>タイピング練習 - クラウド・データエンジニアリング演習</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --correct: #4ade80;
+      --warning: #fbbf24;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", sans-serif;
-      background: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
       display: flex;
       justify-content: center;
-      padding: 16px;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
     }
-    .card {
-      background: white;
+
+    .container {
       width: 100%;
       max-width: 800px;
-      padding: 24px;
+      background-color: var(--card-bg);
       border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-      border: 1px solid #e2e8f0;
-      position: relative;
+      padding: 32px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
     }
-    h1 { font-size: 20px; color: #1e293b; text-align: center; margin-bottom: 16px; }
 
-    .custom-text-input {
-      width: 100%;
-      padding: 10px;
-      font-size: 13px;
-      border: 1px solid #cbd5e1;
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 24px;
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      background-color: rgba(15, 23, 42, 0.5);
+      padding: 12px 20px;
       border-radius: 8px;
-      height: 80px;
-      resize: vertical;
-      margin-bottom: 12px;
-      font-family: inherit;
     }
 
-    .progress-bar-bg {
-      width: 100%;
-      height: 8px;
-      background: #f1f5f9;
-      border-radius: 999px;
-      overflow: hidden;
-      margin: 12px 0;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      background: #4f46e5;
-      width: 100%;
-      transition: width 0.1s linear;
-    }
-    .progress-bar-fill.warning { background: #ef4444; }
-
-    .text-display {
-      font-size: 22px;
-      line-height: 2.8;
-      padding: 24px 16px;
-      background: #f8fafc;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      height: 240px;
-      overflow-y: auto;
-      scroll-behavior: smooth;
-      margin-bottom: 16px;
-      word-break: break-all;
-      position: relative;
-      white-space: pre-wrap;
-    }
-
-    .word-box { position: relative; display: inline-block; margin: 0 1px; }
-    .char-box { position: relative; display: inline-block; padding: 0 1px; }
-    .char-passed { color: #10b981; font-weight: bold; }
-    .char-current {
-      background: #e0e7ff;
-      color: #4338ca;
-      border-bottom: 3px solid #4f46e5;
-      border-radius: 2px;
-    }
-    .char-symbol { color: #94a3b8; opacity: 0.5; }
-
-    .hint-tooltip {
-      position: absolute;
-      top: -34px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #4f46e5;
-      color: white;
-      font-size: 12px;
+    .stats span {
+      color: var(--text-main);
       font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 6px;
-      white-space: nowrap !important;
-      word-break: keep-all !important;
-      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
-      animation: bounce 1s infinite;
-      z-index: 999;
-    }
-    @keyframes bounce {
-      0%, 100% { transform: translate(-50%, 0); }
-      50% { transform: translate(-50%, -4px); }
     }
 
-    input.typing-input {
-      width: 100%;
-      font-size: 18px;
-      padding: 12px 16px;
-      border: 2px solid #cbd5e1;
+    .display-box {
+      background-color: rgba(15, 23, 42, 0.8);
+      border: 2px solid var(--border);
       border-radius: 12px;
-      outline: none;
-      background: #ffffff;
-    }
-    input.typing-input:focus { border-color: #4f46e5; }
-    .info-bar { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-top: 8px; }
-  </style>
-</head>
-<body>
-
-  <div class="card">
-    <h1>日本語 打字练习工具</h1>
-
-    <div id="practice-view">
-      <div class="input-section">
-        <textarea id="custom-text" class="custom-text-input" placeholder="粘贴任意你想练习的课文或文章...">AzureにおけるWebサーバの構築
-Azure Virtual Machines (VM) 上でのWebサーバ構築手順
-Azure Virtual Network (VNet) と連携したネットワーク設定
-構築したWebサーバの動作確認と運用設定</textarea>
-      </div>
-
-      <div class="progress-bar-bg">
-        <div id="progress-bar" class="progress-bar-fill"></div>
-      </div>
-
-      <div id="text-container" class="text-display"></div>
-
-      <input type="text" id="type-input" class="typing-input" placeholder="点击此处切换日文输入法开始打字..." autofocus />
-
-      <div class="info-bar">
-        <span>静置 3 秒自动弹出提示（标点与英文自动跳过）</span>
-        <span id="progress-text">进度: 0 / 0</span>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // 假名与汉字音训映射字典表
-    const KANA_ROM_MAP = {
-      'あ':'a','い':'i','う':'u','え':'e','お':'o',
-      'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
-      'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so',
-      'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
-      'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
-      'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
-      'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
-      'や':'ya','ゆ':'yu','よ':'yo',
-      'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
-      'わ':'wa','を':'wo','ん':'n',
-      'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
-      'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
-      'サ':'sa','シ':'shi','ス':'su','セ':'se','ソ':'so',
-      'タ':'ta','チ':'chi','ツ':'tsu','テ':'te','ト':'to',
-      'ナ':'na','ニ':'ni','ヌ':'nu','ネ':'ne','ノ':'no',
-      'ハ':'ha','ヒ':'hi','フ':'fu','ヘ':'he','ホ':'ho',
-      'マ':'ma','ミ':'mi','ム':'mu','メ':'me','モ':'mo',
-      'ヤ':'ya','ユ':'yu','ヨ':'yo',
-      'ラ':'ra','リ':'ri','ル':'ru','レ':'re','ロ':'ro',
-      'ワ':'wa','ヲ':'wo','ン':'n',
-      '構':'コウ','築':'チク','上':'ウエ','手':'テ','順':'ジュン','連':'レン','携':'ケイ',
-      '設':'セツ','定':'テイ','動':'ドウ','作':'サク','確':'カク','認':'ニン','運':'ウン','用':'ヨウ'
-    };
-
-    let targetText = '';
-    let parsedWords = [];
-    let targetIndex = 0;
-    let lastActiveTime = Date.now();
-    let isComposing = false;
-    let isShowingHint = false;
-
-    let customTextEl, textContainer, typeInput, progressBar, progressText;
-
-    // 匹配绝大多数中英文标点、空格、换行符、括号以及纯英文字符（英文自动跳过）
-    function isSymbolChar(ch) {
-      return /[\s\r\n\(\)\（\）\[\]【】\{\}\<\>《》「」『』\、\。\！\？\!\?\:\：\;\；\-\—\~\～\…a-zA-Z0-9]/.test(ch);
+      padding: 24px;
+      margin-bottom: 24px;
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
     }
 
-    function parseTextIntoWords(fullText) {
-      const result = [];
-      
-      for (let i = 0; i < fullText.length; i++) {
-        const char = fullText[i];
-        const isSym = isSymbolChar(char);
-        let kata = char;
-        let romaji = char;
-
-        if (!isSym) {
-          if (KANA_ROM_MAP[char]) {
-            kata = KANA_ROM_MAP[char];
-            romaji = KANA_ROM_MAP[char].toLowerCase();
-          }
-        }
-
-        result.push({
-          text: char,
-          kata: kata,
-          romaji: romaji,
-          startIndex: i,
-          endIndex: i + 1,
-          isSymbol: isSym
-        });
-      }
-      return result;
+    .hint-container {
+      min-height: 50px;
+      margin-bottom: 12px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
 
-    function autoSkipSymbols() {
-      while (targetIndex < targetText.length && isSymbolChar(targetText[targetIndex])) {
-        targetIndex++;
-      }
+    .hint-container.visible {
+      opacity: 1;
     }
 
-    function renderText(showHint = false) {
-      if (!textContainer) return;
-      isShowingHint = showHint;
-      textContainer.innerHTML = '';
-      let currentElem = null;
-
-      parsedWords.forEach(word => {
-        const isCurrent = targetIndex >= word.startIndex && targetIndex < word.endIndex;
-        const wordSpan = document.createElement('span');
-        wordSpan.className = 'word-box';
-
-        if (showHint && isCurrent && !word.isSymbol) {
-          const hint = document.createElement('div');
-          hint.className = 'hint-tooltip';
-          hint.innerText = `${word.kata} (${word.romaji})`;
-          wordSpan.appendChild(hint);
-        }
-
-        for (let idx = word.startIndex; idx < word.endIndex; idx++) {
-          const char = targetText[idx];
-          const charSpan = document.createElement('span');
-          charSpan.className = 'char-box';
-
-          if (isSymbolChar(char)) {
-            charSpan.classList.add('char-symbol');
-          } else if (idx < targetIndex) {
-            charSpan.classList.add('char-passed');
-          } else if (idx === targetIndex) {
-            charSpan.classList.add('char-current');
-            currentElem = charSpan;
-          }
-
-          charSpan.appendChild(document.createTextNode(char));
-          wordSpan.appendChild(charSpan);
-        }
-        textContainer.appendChild(wordSpan);
-      });
-
-      if (progressText) progressText.innerText = `进度: ${targetIndex} / ${targetText.length}`;
-
-      if (currentElem) {
-        const containerTop = textContainer.getBoundingClientRect().top;
-        const elemTop = currentElem.getBoundingClientRect().top;
-        const relativeTop = elemTop - containerTop;
-
-        if (relativeTop < 40 || relativeTop > 150) {
-          textContainer.scrollTop += (relativeTop - 80);
-        }
-      }
+    .hint-kana {
+      font-size: 1.1rem;
+      color: var(--warning);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
     }
 
-    function handleInput() {
-      if (isComposing) return;
-      autoSkipSymbols();
-
-      const val = typeInput.value;
-      const rem = targetText.slice(targetIndex);
-      let matchLen = 0;
-
-      for (let i = Math.min(val.length, rem.length); i > 0; i--) {
-        if (val.slice(-i) === rem.slice(0, i)) { 
-          matchLen = i; 
-          break; 
-        }
-      }
-
-      if (matchLen > 0) {
-        targetIndex += matchLen;
-        typeInput.value = '';
-        lastActiveTime = Date.now();
-        autoSkipSymbols();
-        renderText(false);
-      }
+    .hint-roma {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
     }
 
-    function resetGame() {
-      if (!customTextEl) return;
-      targetText = customTextEl.value.trim() || 'AzureにおけるWebサーバの構築';
-      parsedWords = parseTextIntoWords(targetText);
-      targetIndex = 0;
-      autoSkipSymbols();
-      if (typeInput) typeInput.value = '';
-      lastActiveTime = Date.now();
-      if (textContainer) textContainer.scrollTop = 0;
-      renderText(false);
+    .target-text {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      word-break: break-all;
+      text-align: center;
+      line-height: 1.4;
     }
 
-    // 确保 DOM 结构安全就绪后绑定与渲染
-    document.addEventListener('DOMContentLoaded', () => {
-      customTextEl = document.getElementById('custom-text');
-      textContainer = document.getElementById('text-container');
-      typeInput = document.getElementById('type-input');
-      progressBar = document.getElementById('progress-bar');
-      progressText = document.getElementById('progress-text');
+    .char {
+      color: var(--text-muted);
+    }
 
-      customTextEl.addEventListener('input', resetGame);
-      typeInput.addEventListener('input', handleInput);
-      typeInput.addEventListener('compositionstart', () => isComposing = true);
-      typeInput.addEventListener('compositionend', () => { 
-        isComposing = false; 
-        handleInput(); 
-      });
+    .char.correct {
+      color: var(--correct);
+    }
 
-      resetGame();
+    .char.current {
+      color: var(--text-main);
+      background-color: rgba(56, 189, 248, 0.3);
+      border-bottom: 2px solid var(--accent);
+    }
 
-      // 3 秒倒计时
-      setInterval(() => {
-        const remaining = Math.max(0, 3 - (Date.now() - lastActiveTime) / 1000);
-        if (progressBar) progressBar.style.width = (remaining / 3 * 100) + '%';
-        
-        if (progressBar) {
-          if (remaining <= 1) progressBar.classList.add('warning');
-          else progressBar.classList.remove('warning');
-        }
-
-        if (remaining <= 0 && !isShowingHint) {
-          renderText(true);
-        }
-      }, 100);
-    });
-  </script>
-</body>
-</html>
+    .input-box {
+      width: 100%;
+      padding: 16px 20px;
