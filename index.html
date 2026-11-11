@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>日本語 打字练习工具</title>
-  <script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -32,9 +31,10 @@
       font-size: 13px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
-      height: 64px;
+      height: 80px;
       resize: vertical;
       margin-bottom: 12px;
+      font-family: inherit;
     }
 
     .progress-bar-bg {
@@ -66,6 +66,7 @@
       margin-bottom: 16px;
       word-break: break-all;
       position: relative;
+      white-space: pre-wrap;
     }
 
     .word-box { position: relative; display: inline-block; margin: 0 1px; }
@@ -121,7 +122,10 @@
 
     <div id="practice-view">
       <div class="input-section">
-        <textarea id="custom-text" class="custom-text-input" placeholder="粘贴任意你想练习的课文或文章...">[クラウド・データエンジニアリング演習 第1回] イントロダクションとGoogle Cloud Platformの基本</textarea>
+        <textarea id="custom-text" class="custom-text-input" placeholder="粘贴任意你想练习的课文或文章...">AzureにおけるWebサーバの構築
+Azure Virtual Machines (VM) 上でのWebサーバ構築手順
+Azure Virtual Network (VNet) と連携したネットワーク設定
+構築したWebサーバの動作確認と運用設定</textarea>
       </div>
 
       <div class="progress-bar-bg">
@@ -133,52 +137,37 @@
       <input type="text" id="type-input" class="typing-input" placeholder="点击此处切换日文输入法开始打字..." autofocus />
 
       <div class="info-bar">
-        <span>静置 3 秒自动弹出提示（标点与括号自动跳过）</span>
+        <span>静置 3 秒自动弹出提示（标点与英文自动跳过）</span>
         <span id="progress-text">进度: 0 / 0</span>
       </div>
     </div>
   </div>
 
   <script>
-    // 常用常见课文汉字发音字典库
-    const KANJI_MAP = {
-      '第': { kata: 'ダイ', rom: 'dai' },
-      '回': { kata: 'カイ', rom: 'kai' },
-      '演': { kata: 'エン', rom: 'en' },
-      '習': { kata: 'シュウ', rom: 'shuu' },
-      '基': { kata: 'キ', rom: 'ki' },
-      '本': { kata: 'ホン', rom: 'hon' },
-      '概': { kata: 'ガイ', rom: 'gai' },
-      '要': { kata: 'ヨウ', rom: 'you' },
-      '従': { kata: 'ジュウ', rom: 'juu' },
-      '来': { kata: 'ライ', rom: 'rai' },
-      '理': { kata: 'リ', rom: 'ri' },
-      '解': { kata: 'カイ', rom: 'kai' },
-      '提': { kata: 'テイ', rom: 'tei' },
-      '供': { kata: 'キョウ', rom: 'kyou' },
-      '各': { kata: 'カク', rom: 'kaku' },
-      '種': { kata: 'シュ', rom: 'shu' },
-      '役': { kata: 'ヤク', rom: 'yaku' },
-      '割': { kata: 'ワリ', rom: 'wari' },
-      '無': { kata: 'ム', rom: 'mu' },
-      '料': { kata: 'リョウ', rom: 'ryou' },
-      '枠': { kata: 'ワク', rom: 'waku' },
-      '仕': { kata: 'シ', rom: 'shi' },
-      '組': { kata: 'クミ', rom: 'kumi' },
-      '注': { kata: 'チュウ', rom: 'chuu' },
-      '意': { kata: 'イ', rom: 'i' },
-      '事': { kata: 'ジ', rom: 'ji' },
-      '項': { kata: 'コウ', rom: 'kou' },
-      '課': { kata: 'カ', rom: 'ka' },
-      '題': { kata: 'ダイ', rom: 'dai' },
-      '内': { kata: 'ナイ', rom: 'nai' },
-      '容': { kata: 'ヨウ', rom: 'you' },
-      '授': { kata: 'ジュ', rom: 'ju' },
-      '業': { kata: 'ギョウ', rom: 'gyou' },
-      '資': { kata: 'シ', rom: 'shi' },
-      '掲載': { kata: 'ケイサイ', rom: 'keisai' },
-      '確': { kata: 'カク', rom: 'kaku' },
-      '認': { kata: 'ニン', rom: 'nin' }
+    // 假名与汉字音训映射字典表
+    const KANA_ROM_MAP = {
+      'あ':'a','い':'i','う':'u','え':'e','お':'o',
+      'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
+      'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so',
+      'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
+      'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
+      'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
+      'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
+      'や':'ya','ゆ':'yu','よ':'yo',
+      'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
+      'わ':'wa','を':'wo','ん':'n',
+      'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
+      'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
+      'サ':'sa','シ':'shi','ス':'su','セ':'se','ソ':'so',
+      'タ':'ta','チ':'chi','ツ':'tsu','テ':'te','ト':'to',
+      'ナ':'na','ニ':'ni','ヌ':'nu','ネ':'ne','ノ':'no',
+      'ハ':'ha','ヒ':'hi','フ':'fu','ヘ':'he','ホ':'ho',
+      'マ':'ma','ミ':'mi','ム':'mu','メ':'me','モ':'mo',
+      'ヤ':'ya','ユ':'yu','ヨ':'yo',
+      'ラ':'ra','リ':'ri','ル':'ru','レ':'re','ロ':'ro',
+      'ワ':'wa','ヲ':'wo','ン':'n',
+      '構':'コウ','築':'チク','上':'ウエ','手':'テ','順':'ジュン','連':'レン','携':'ケイ',
+      '設':'セツ','定':'テイ','動':'ドウ','作':'サク','確':'カク','認':'ニン','運':'ウン','用':'ヨウ'
     };
 
     let targetText = '';
@@ -188,20 +177,167 @@
     let isComposing = false;
     let isShowingHint = false;
 
-    const customTextEl = document.getElementById('custom-text');
-    const textContainer = document.getElementById('text-container');
-    const typeInput = document.getElementById('type-input');
-    const progressBar = document.getElementById('progress-bar');
-    const progressText = document.getElementById('progress-text');
+    let customTextEl, textContainer, typeInput, progressBar, progressText;
 
-    // 正则判断：绝大多数中日标点、括号与符号自动跳过
+    // 匹配绝大多数中英文标点、空格、换行符、括号以及纯英文字符（英文自动跳过）
     function isSymbolChar(ch) {
-      return /[\s\(\)\（\）\[\]【】\{\}\<\>《》「」『』\、\。\！\？\!\?\:\：\;\；\-\—\~\～\…]/.test(ch);
+      return /[\s\r\n\(\)\（\）\[\]【】\{\}\<\>《》「」『』\、\。\！\？\!\?\:\：\;\；\-\—\~\～\…a-zA-Z0-9]/.test(ch);
     }
 
-    // 解析输入的文本为带假名与罗马字的数据结构
     function parseTextIntoWords(fullText) {
       const result = [];
       
       for (let i = 0; i < fullText.length; i++) {
-        const char =
+        const char = fullText[i];
+        const isSym = isSymbolChar(char);
+        let kata = char;
+        let romaji = char;
+
+        if (!isSym) {
+          if (KANA_ROM_MAP[char]) {
+            kata = KANA_ROM_MAP[char];
+            romaji = KANA_ROM_MAP[char].toLowerCase();
+          }
+        }
+
+        result.push({
+          text: char,
+          kata: kata,
+          romaji: romaji,
+          startIndex: i,
+          endIndex: i + 1,
+          isSymbol: isSym
+        });
+      }
+      return result;
+    }
+
+    function autoSkipSymbols() {
+      while (targetIndex < targetText.length && isSymbolChar(targetText[targetIndex])) {
+        targetIndex++;
+      }
+    }
+
+    function renderText(showHint = false) {
+      if (!textContainer) return;
+      isShowingHint = showHint;
+      textContainer.innerHTML = '';
+      let currentElem = null;
+
+      parsedWords.forEach(word => {
+        const isCurrent = targetIndex >= word.startIndex && targetIndex < word.endIndex;
+        const wordSpan = document.createElement('span');
+        wordSpan.className = 'word-box';
+
+        if (showHint && isCurrent && !word.isSymbol) {
+          const hint = document.createElement('div');
+          hint.className = 'hint-tooltip';
+          hint.innerText = `${word.kata} (${word.romaji})`;
+          wordSpan.appendChild(hint);
+        }
+
+        for (let idx = word.startIndex; idx < word.endIndex; idx++) {
+          const char = targetText[idx];
+          const charSpan = document.createElement('span');
+          charSpan.className = 'char-box';
+
+          if (isSymbolChar(char)) {
+            charSpan.classList.add('char-symbol');
+          } else if (idx < targetIndex) {
+            charSpan.classList.add('char-passed');
+          } else if (idx === targetIndex) {
+            charSpan.classList.add('char-current');
+            currentElem = charSpan;
+          }
+
+          charSpan.appendChild(document.createTextNode(char));
+          wordSpan.appendChild(charSpan);
+        }
+        textContainer.appendChild(wordSpan);
+      });
+
+      if (progressText) progressText.innerText = `进度: ${targetIndex} / ${targetText.length}`;
+
+      if (currentElem) {
+        const containerTop = textContainer.getBoundingClientRect().top;
+        const elemTop = currentElem.getBoundingClientRect().top;
+        const relativeTop = elemTop - containerTop;
+
+        if (relativeTop < 40 || relativeTop > 150) {
+          textContainer.scrollTop += (relativeTop - 80);
+        }
+      }
+    }
+
+    function handleInput() {
+      if (isComposing) return;
+      autoSkipSymbols();
+
+      const val = typeInput.value;
+      const rem = targetText.slice(targetIndex);
+      let matchLen = 0;
+
+      for (let i = Math.min(val.length, rem.length); i > 0; i--) {
+        if (val.slice(-i) === rem.slice(0, i)) { 
+          matchLen = i; 
+          break; 
+        }
+      }
+
+      if (matchLen > 0) {
+        targetIndex += matchLen;
+        typeInput.value = '';
+        lastActiveTime = Date.now();
+        autoSkipSymbols();
+        renderText(false);
+      }
+    }
+
+    function resetGame() {
+      if (!customTextEl) return;
+      targetText = customTextEl.value.trim() || 'AzureにおけるWebサーバの構築';
+      parsedWords = parseTextIntoWords(targetText);
+      targetIndex = 0;
+      autoSkipSymbols();
+      if (typeInput) typeInput.value = '';
+      lastActiveTime = Date.now();
+      if (textContainer) textContainer.scrollTop = 0;
+      renderText(false);
+    }
+
+    // 确保 DOM 结构安全就绪后绑定与渲染
+    document.addEventListener('DOMContentLoaded', () => {
+      customTextEl = document.getElementById('custom-text');
+      textContainer = document.getElementById('text-container');
+      typeInput = document.getElementById('type-input');
+      progressBar = document.getElementById('progress-bar');
+      progressText = document.getElementById('progress-text');
+
+      customTextEl.addEventListener('input', resetGame);
+      typeInput.addEventListener('input', handleInput);
+      typeInput.addEventListener('compositionstart', () => isComposing = true);
+      typeInput.addEventListener('compositionend', () => { 
+        isComposing = false; 
+        handleInput(); 
+      });
+
+      resetGame();
+
+      // 3 秒倒计时
+      setInterval(() => {
+        const remaining = Math.max(0, 3 - (Date.now() - lastActiveTime) / 1000);
+        if (progressBar) progressBar.style.width = (remaining / 3 * 100) + '%';
+        
+        if (progressBar) {
+          if (remaining <= 1) progressBar.classList.add('warning');
+          else progressBar.classList.remove('warning');
+        }
+
+        if (remaining <= 0 && !isShowingHint) {
+          renderText(true);
+        }
+      }, 100);
+    });
+  </script>
+</body>
+</html>
