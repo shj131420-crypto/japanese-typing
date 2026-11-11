@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>日本語 打字练习工具</title>
+  <!-- 引入日文分词与转换库 -->
+  <script src="https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,8 +24,18 @@
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.05);
       border: 1px solid #e2e8f0;
+      position: relative;
     }
     h1 { font-size: 20px; color: #1e293b; text-align: center; margin-bottom: 16px; }
+
+    /* 字典加载提示 */
+    .loading-status {
+      text-align: center;
+      font-size: 13px;
+      color: #4f46e5;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
 
     .custom-text-input {
       width: 100%;
@@ -31,8 +43,9 @@
       font-size: 13px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
-      max-height: 60px;
+      height: 60px;
       resize: vertical;
+      margin-bottom: 12px;
     }
 
     .progress-bar-bg {
@@ -52,13 +65,13 @@
     .progress-bar-fill.warning { background: #ef4444; }
 
     .text-display {
-      font-size: 20px;
+      font-size: 22px;
       line-height: 2.8;
       padding: 24px 16px;
       background: #f8fafc;
       border-radius: 12px;
       border: 1px solid #e2e8f0;
-      height: 230px;
+      height: 240px;
       overflow-y: auto;
       scroll-behavior: smooth;
       margin-bottom: 16px;
@@ -66,8 +79,8 @@
       position: relative;
     }
 
-    .word-box { position: relative; display: inline-block; margin: 0 2px; }
-    .char-box { position: relative; display: inline-block; }
+    .word-box { position: relative; display: inline-block; margin: 0 1px; }
+    .char-box { position: relative; display: inline-block; padding: 0 1px; }
     .char-passed { color: #10b981; font-weight: bold; }
     .char-current {
       background: #e0e7ff;
@@ -75,27 +88,28 @@
       border-bottom: 3px solid #4f46e5;
       border-radius: 2px;
     }
+    .char-symbol { color: #94a3b8; opacity: 0.5; }
 
     .hint-tooltip {
       position: absolute;
-      bottom: -32px;
+      top: -34px;
       left: 50%;
       transform: translateX(-50%);
       background: #4f46e5;
       color: white;
       font-size: 12px;
       font-weight: 600;
-      padding: 2px 10px;
+      padding: 2px 8px;
       border-radius: 6px;
       white-space: nowrap !important;
       word-break: keep-all !important;
       box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
       animation: bounce 1s infinite;
-      z-index: 9999;
+      z-index: 999;
     }
     @keyframes bounce {
       0%, 100% { transform: translate(-50%, 0); }
-      50% { transform: translate(-50%, 4px); }
+      50% { transform: translate(-50%, -4px); }
     }
 
     input.typing-input {
@@ -115,10 +129,11 @@
 
   <div class="card">
     <h1>日本語 打字练习工具</h1>
+    <div id="status-tip" class="loading-status">⌛ 正在载入日文汉字识别字典，请稍候...</div>
 
     <div id="practice-view">
       <div class="input-section">
-        <textarea id="custom-text" class="custom-text-input" placeholder="粘贴任意你想练习的日文文章...">注意事項（課題の内容は授業資料に掲載しているので、授業資料を確認してください）</textarea>
+        <textarea id="custom-text" class="custom-text-input" placeholder="粘贴任意你想练习的日文文章...">[クラウド・データエンジニアリング演習 第1回] イントロダクション</textarea>
       </div>
 
       <div class="progress-bar-bg">
@@ -130,34 +145,14 @@
       <input type="text" id="type-input" class="typing-input" placeholder="点击此处切换日文输入法开始打字..." autofocus />
 
       <div class="info-bar">
-        <span>不打字静置 3 秒自动弹出：片假名 + 罗马字（标点符号全免输入）</span>
+        <span>静置 3 秒自动弹出提示（标点与括号自动跳过）</span>
         <span id="progress-text">进度: 0 / 0</span>
       </div>
     </div>
   </div>
 
   <script>
-    // 基础词汇字典映射
-    const LEXICON = [
-      { text: '注意事項', kata: 'チュウイジコウ' },
-      { text: '注意', kata: 'チュウイ' },
-      { text: '事項', kata: 'ジコウ' },
-      { text: '課題', kata: 'カダイ' },
-      { text: '内容', kata: 'ナイヨウ' },
-      { text: '授業', kata: 'ジュギョウ' },
-      { text: '資料', kata: 'シリョウ' },
-      { text: '掲載', kata: 'ケイサイ' },
-      { text: '確認', kata: 'カクニン' },
-      { text: '提出', kata: 'テイシュツ' },
-      { text: '期限', kata: 'キゲン' },
-      { text: '最終', kata: 'サイシュウ' },
-      { text: '日本語', kata: 'ニホンゴ' },
-      { text: '名前', kata: 'ナマエ' },
-      { text: '勉強', kata: 'ベンキョウ' },
-      { text: '学校', kata: 'ガッコウ' },
-      { text: '先生', kata: 'センセイ' }
-    ];
-
+    let tokenizer = null;
     let targetText = '';
     let parsedWords = [];
     let targetIndex = 0;
@@ -170,70 +165,53 @@
     const typeInput = document.getElementById('type-input');
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
+    const statusTip = document.getElementById('status-tip');
 
-    // 支持匹配各种常见括号与标点符号，全部免输入跳过
+    // 绝大多数标点、空格与括号自动免打
     function isSymbolChar(ch) {
-      return RegExp(/[\s\(\)\（\）\[\]【】\{\}\<\>《》「」『』\、\。\！\？\!\?\:\：\;\；\-\—\~\～\…]/).test(ch);
+      return /[\s\(\)\（\）\[\]【】\{\}\<\>《》「」『』\、\。\！\？\!\?\:\：\;\；\-\—\~\～\…]/.test(ch);
     }
 
     function parseTextIntoWords(fullText) {
       const result = [];
-      let i = 0;
 
-      while (i < fullText.length) {
-        const char = fullText[i];
+      // 如果自动识别字典已经加载完毕
+      if (tokenizer) {
+        const tokens = tokenizer.tokenize(fullText);
+        let currentIndex = 0;
 
-        // 1. 标点符号直接过
-        if (isSymbolChar(char)) {
-          result.push({
-            text: char,
-            kata: char,
-            romaji: char,
-            startIndex: i,
-            endIndex: i + 1,
-            isSymbol: true
-          });
-          i++;
-          continue;
-        }
+        tokens.forEach(token => {
+          const text = token.surface_form;
+          const len = text.length;
+          const startIndex = currentIndex;
+          const endIndex = currentIndex + len;
+          currentIndex = endIndex;
 
-        // 2. 匹配词典
-        let matched = false;
-        for (const wordObj of LEXICON) {
-          if (fullText.startsWith(wordObj.text, i)) {
-            const rom = window.wanakana ? window.wanakana.toRomaji(wordObj.kata) : wordObj.kata;
-            result.push({
-              text: wordObj.text,
-              kata: wordObj.kata,
-              romaji: rom,
-              startIndex: i,
-              endIndex: i + wordObj.text.length,
-              isSymbol: false
-            });
-            i += wordObj.text.length;
-            matched = true;
-            break;
+          if (len === 1 && isSymbolChar(text)) {
+            result.push({ text, kata: text, romaji: text, startIndex, endIndex, isSymbol: true });
+            return;
           }
-        }
 
-        // 3. 兜底单字处理
-        if (!matched) {
-          let kata = char;
-          let romaji = char;
+          let kata = token.reading || text;
+          let romaji = text;
           if (window.wanakana) {
-            kata = window.wanakana.toKatakana(char);
-            romaji = window.wanakana.toRomaji(char);
+            try { romaji = window.wanakana.toRomaji(kata); } catch(e) {}
           }
-          result.push({
-            text: char,
-            kata: kata,
-            romaji: romaji,
-            startIndex: i,
-            endIndex: i + 1,
-            isSymbol: false
-          });
-          i++;
+
+          result.push({ text, kata, romaji, startIndex, endIndex, isSymbol: false });
+        });
+        return result;
+      }
+
+      // 如果字典还没加载好，降级为单字显示（防止页面空白）
+      for (let i = 0; i < fullText.length; i++) {
+        const ch = fullText[i];
+        const isSym = isSymbolChar(ch);
+        let rom = ch;
+        if (window.wanakana) {
+          try { rom = window.wanakana.toRomaji(ch); } catch(e){}
         }
+        result.push({ text: ch, kata: ch, romaji: rom, startIndex: i, endIndex: i + 1, isSymbol: isSym });
       }
       return result;
     }
@@ -266,7 +244,9 @@
           const charSpan = document.createElement('span');
           charSpan.className = 'char-box';
 
-          if (idx < targetIndex) {
+          if (isSymbolChar(char)) {
+            charSpan.classList.add('char-symbol');
+          } else if (idx < targetIndex) {
             charSpan.classList.add('char-passed');
           } else if (idx === targetIndex) {
             charSpan.classList.add('char-current');
@@ -292,15 +272,6 @@
       }
     }
 
-    // 调整为 3 秒倒计时
-    setInterval(() => {
-      const remaining = Math.max(0, 3 - (Date.now() - lastActiveTime) / 1000);
-      progressBar.style.width = (remaining / 3 * 100) + '%';
-      if (remaining <= 1) progressBar.classList.add('warning');
-      else progressBar.classList.remove('warning');
-      if (remaining <= 0 && !isShowingHint) renderText(true);
-    }, 100);
-
     function handleInput() {
       if (isComposing) return;
       autoSkipSymbols();
@@ -323,7 +294,7 @@
     }
 
     function resetGame() {
-      targetText = customTextEl.value.trim() || '注意事項（課題の内容は授業資料に掲載しているので、授業資料を確認してください）';
+      targetText = customTextEl.value.trim() || '[クラウド・データエンジニアリング演習 第1回] イントロダクション';
       parsedWords = parseTextIntoWords(targetText);
       targetIndex = 0;
       autoSkipSymbols();
@@ -334,14 +305,6 @@
       typeInput.focus();
     }
 
-    customTextEl.addEventListener('input', resetGame);
-    customTextEl.addEventListener('change', resetGame);
-    typeInput.addEventListener('input', handleInput);
-    typeInput.addEventListener('compositionstart', () => isComposing = true);
-    typeInput.addEventListener('compositionend', () => { isComposing = false; handleInput(); });
-
-    document.addEventListener('DOMContentLoaded', resetGame);
-    window.onload = resetGame;
-  </script>
-</body>
-</html>
+    // 加载自动识别字典
+    function loadDictionary() {
+      if (typeof kuromoji === '
