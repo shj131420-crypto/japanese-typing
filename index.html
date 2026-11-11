@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>日本語 打字练习工具</title>
-  <!-- 使用内嵌词典的无跨域依赖形态学引擎 -->
   <script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -52,14 +51,15 @@
     }
     .progress-bar-fill.warning { background: #ef4444; }
 
+    /* 优化点 1：顶部增加 padding-top: 42px，专门留出提示气泡的空间 */
     .text-display {
       font-size: 20px;
       line-height: 2.3;
-      padding: 16px;
+      padding: 42px 16px 16px 16px; 
       background: #f8fafc;
       border-radius: 12px;
       border: 1px solid #e2e8f0;
-      height: 220px;
+      height: 230px;
       overflow-y: auto;
       scroll-behavior: smooth;
       margin-bottom: 16px;
@@ -76,9 +76,11 @@
       border-bottom: 3px solid #4f46e5;
       border-radius: 2px;
     }
+    
+    /* 优化点 2：优化提示气泡的显示高度与防遮挡逻辑 */
     .hint-tooltip {
       position: absolute;
-      top: -38px;
+      top: -36px;
       left: 50%;
       transform: translateX(-50%);
       background: #4f46e5;
@@ -88,13 +90,15 @@
       padding: 3px 10px;
       border-radius: 6px;
       white-space: nowrap;
+      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
       animation: bounce 1s infinite;
-      z-index: 100;
+      z-index: 1000;
     }
     @keyframes bounce {
       0%, 100% { transform: translate(-50%, 0); }
       50% { transform: translate(-50%, -4px); }
     }
+
     input.typing-input {
       width: 100%;
       font-size: 18px;
@@ -134,7 +138,6 @@
   </div>
 
   <script>
-    // 基础假名 -> 片假名与罗马字引擎
     function hiraToKata(str) {
       return wanakana ? wanakana.toKatakana(str) : str;
     }
@@ -143,7 +146,6 @@
       return wanakana ? wanakana.toRomaji(str) : str;
     }
 
-    // 常用高频词词组映射表 (用于精确切分长文章)
     const LEXICON = [
       { text: '注意事項', kata: 'チュウイジコウ' },
       { text: '注意', kata: 'チュウイ' },
@@ -279,7 +281,7 @@
         const elemTop = currentElem.getBoundingClientRect().top;
         const relativeTop = elemTop - containerTop;
 
-        if (relativeTop < 20 || relativeTop > 160) {
+        if (relativeTop < 40 || relativeTop > 150) {
           textContainer.scrollTop += (relativeTop - 80);
         }
       }
