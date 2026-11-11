@@ -76,6 +76,10 @@
       border-bottom: 3px solid #4f46e5;
       border-radius: 2px;
     }
+    .char-symbol {
+      color: #94a3b8;
+      opacity: 0.6;
+    }
 
     .hint-tooltip {
       position: absolute;
@@ -174,7 +178,6 @@
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
 
-    // 匹配绝大多数中日标点、括号及特殊符号
     function isSymbolChar(ch) {
       return /[\s\(\)\（\）\[\]【】\{\}\<\>《》「」『』\、\。\！\？\!\?\:\：\;\；\-\—\~\～\…]/.test(ch);
     }
@@ -192,3 +195,98 @@
             kata: char,
             romaji: char,
             startIndex: i,
+            endIndex: i + 1,
+            isSymbol: true
+          });
+          i++;
+          continue;
+        }
+
+        let matched = false;
+        for (const wordObj of LEXICON) {
+          if (fullText.startsWith(wordObj.text, i)) {
+            let rom = wordObj.kata;
+            try {
+              if (window.wanakana && window.wanakana.toRomaji) {
+                rom = window.wanakana.toRomaji(wordObj.kata);
+              }
+            } catch(e){}
+            
+            result.push({
+              text: wordObj.text,
+              kata: wordObj.kata,
+              romaji: rom,
+              startIndex: i,
+              endIndex: i + wordObj.text.length,
+              isSymbol: false
+            });
+            i += wordObj.text.length;
+            matched = true;
+            break;
+          }
+        }
+
+        if (!matched) {
+          let kata = char;
+          let romaji = char;
+          try {
+            if (window.wanakana) {
+              if (window.wanakana.isHiragana(char) || window.wanakana.isKatakana(char)) {
+                kata = window.wanakana.toKatakana(char);
+                romaji = window.wanakana.toRomaji(char);
+              }
+            }
+          } catch(e){}
+
+          result.push({
+            text: char,
+            kata: kata,
+            romaji: romaji,
+            startIndex: i,
+            endIndex: i + 1,
+            isSymbol: false
+          });
+          i++;
+        }
+      }
+      return result;
+    }
+
+    function autoSkipSymbols() {
+      while (targetIndex < targetText.length && isSymbolChar(targetText[targetIndex])) {
+        targetIndex++;
+      }
+    }
+
+    function renderText(showHint = false) {
+      isShowingHint = showHint;
+      textContainer.innerHTML = '';
+      let currentElem = null;
+
+      parsedWords.forEach(word => {
+        const isCurrent = targetIndex >= word.startIndex && targetIndex < word.endIndex;
+        const wordSpan = document.createElement('span');
+        wordSpan.className = 'word-box';
+
+        if (showHint && isCurrent && !word.isSymbol) {
+          const hint = document.createElement('div');
+          hint.className = 'hint-tooltip';
+          hint.innerText = `${word.kata} (${word.romaji})`;
+          wordSpan.appendChild(hint);
+        }
+
+        for (let idx = word.startIndex; idx < word.endIndex; idx++) {
+          const char = targetText[idx];
+          const charSpan = document.createElement('span');
+          charSpan.className = 'char-box';
+
+          if (isSymbolChar(char)) {
+            charSpan.classList.add('char-symbol');
+          } else if (idx < targetIndex) {
+            charSpan.classList.add('char-passed');
+          } else if (idx === targetIndex) {
+            charSpan.classList.add('char-current');
+            currentElem = charSpan;
+          }
+
+          charSpan.appendChild
