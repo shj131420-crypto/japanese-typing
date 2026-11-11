@@ -22,38 +22,20 @@
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.05);
       border: 1px solid #e2e8f0;
+      position: relative;
     }
     h1 { font-size: 20px; color: #1e293b; text-align: center; margin-bottom: 16px; }
 
-    .input-section {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
     .custom-text-input {
-      flex: 1;
+      width: 100%;
       padding: 10px;
       font-size: 13px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       height: 64px;
       resize: vertical;
+      margin-bottom: 12px;
     }
-
-    .parse-btn {
-      width: 130px;
-      background: #4f46e5;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .parse-btn:hover { background: #4338ca; }
-    .parse-btn:disabled { background: #94a3b8; cursor: not-allowed; }
 
     .progress-bar-bg {
       width: 100%;
@@ -139,8 +121,7 @@
 
     <div id="practice-view">
       <div class="input-section">
-        <textarea id="custom-text" class="custom-text-input" placeholder="粘贴任意你想练习的课文或文章...">[クラウド・データエンジニアリング演習 第1回] イントロダクション</textarea>
-        <button id="parse-btn" class="parse-btn" onclick="autoAnalyzeText()">⚡ 识别课文读音</button>
+        <textarea id="custom-text" class="custom-text-input" placeholder="粘贴任意你想练习的课文或文章...">[クラウド・データエンジニアリング演習 第1回] イントロダクションとGoogle Cloud Platformの基本</textarea>
       </div>
 
       <div class="progress-bar-bg">
@@ -159,6 +140,47 @@
   </div>
 
   <script>
+    // 常用常见课文汉字发音字典库
+    const KANJI_MAP = {
+      '第': { kata: 'ダイ', rom: 'dai' },
+      '回': { kata: 'カイ', rom: 'kai' },
+      '演': { kata: 'エン', rom: 'en' },
+      '習': { kata: 'シュウ', rom: 'shuu' },
+      '基': { kata: 'キ', rom: 'ki' },
+      '本': { kata: 'ホン', rom: 'hon' },
+      '概': { kata: 'ガイ', rom: 'gai' },
+      '要': { kata: 'ヨウ', rom: 'you' },
+      '従': { kata: 'ジュウ', rom: 'juu' },
+      '来': { kata: 'ライ', rom: 'rai' },
+      '理': { kata: 'リ', rom: 'ri' },
+      '解': { kata: 'カイ', rom: 'kai' },
+      '提': { kata: 'テイ', rom: 'tei' },
+      '供': { kata: 'キョウ', rom: 'kyou' },
+      '各': { kata: 'カク', rom: 'kaku' },
+      '種': { kata: 'シュ', rom: 'shu' },
+      '役': { kata: 'ヤク', rom: 'yaku' },
+      '割': { kata: 'ワリ', rom: 'wari' },
+      '無': { kata: 'ム', rom: 'mu' },
+      '料': { kata: 'リョウ', rom: 'ryou' },
+      '枠': { kata: 'ワク', rom: 'waku' },
+      '仕': { kata: 'シ', rom: 'shi' },
+      '組': { kata: 'クミ', rom: 'kumi' },
+      '注': { kata: 'チュウ', rom: 'chuu' },
+      '意': { kata: 'イ', rom: 'i' },
+      '事': { kata: 'ジ', rom: 'ji' },
+      '項': { kata: 'コウ', rom: 'kou' },
+      '課': { kata: 'カ', rom: 'ka' },
+      '題': { kata: 'ダイ', rom: 'dai' },
+      '内': { kata: 'ナイ', rom: 'nai' },
+      '容': { kata: 'ヨウ', rom: 'you' },
+      '授': { kata: 'ジュ', rom: 'ju' },
+      '業': { kata: 'ギョウ', rom: 'gyou' },
+      '資': { kata: 'シ', rom: 'shi' },
+      '掲載': { kata: 'ケイサイ', rom: 'keisai' },
+      '確': { kata: 'カク', rom: 'kaku' },
+      '認': { kata: 'ニン', rom: 'nin' }
+    };
+
     let targetText = '';
     let parsedWords = [];
     let targetIndex = 0;
@@ -171,156 +193,15 @@
     const typeInput = document.getElementById('type-input');
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
-    const parseBtn = document.getElementById('parse-btn');
 
-    // 绝大多数中日文标点、括号与符号自动跳过免打
+    // 正则判断：绝大多数中日标点、括号与符号自动跳过
     function isSymbolChar(ch) {
       return /[\s\(\)\（\）\[\]【】\{\}\<\>《》「」『』\、\。\！\？\!\?\:\：\;\；\-\—\~\～\…]/.test(ch);
     }
 
-    // 自动在线获取课文中汉字的假名与罗马字读音
-    async function autoAnalyzeText() {
-      const rawText = customTextEl.value.trim();
-      if (!rawText) return;
-
-      parseBtn.disabled = true;
-      parseBtn.innerText = "⏳ 正在识别中...";
-
-      try {
-        // 请求高可用日文注音 API 服务
-        const response = await fetch(`https://api.jisho.org/api/v1/search/words?keyword=${encodeURIComponent(rawText)}`).catch(() => null);
-        
-        // 使用高效简捷的分词识别
-        parsedWords = await parseTextWithAPI(rawText);
-      } catch (e) {
-        parsedWords = parseFallback(rawText);
-      }
-
-      parseBtn.disabled = false;
-      parseBtn.innerText = "⚡ 识别课文读音";
-      
-      targetIndex = 0;
-      autoSkipSymbols();
-      typeInput.value = '';
-      lastActiveTime = Date.now();
-      textContainer.scrollTop = 0;
-      renderText(false);
-      typeInput.focus();
-    }
-
-    // 智能分析课文结构（支持汉字自动转片假名+罗马字）
-    async function parseTextWithAPI(fullText) {
+    // 解析输入的文本为带假名与罗马字的数据结构
+    function parseTextIntoWords(fullText) {
       const result = [];
       
-      // 免费公共日文分词解析 API 接口
-      try {
-        const res = await fetch(`https://labs.goo.ne.jp/api/hiragana`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: `app_id=demo&sentence=${encodeURIComponent(fullText)}&output_type=katakana`
-        }).catch(() => null);
-
-        // 如果获取到了整篇注音
-        if (res && res.ok) {
-          const data = await res.json();
-          if (data && data.converted) {
-            const katakanaStr = data.converted;
-            // 匹配构建
-            return buildWordsFromKatakana(fullText, katakanaStr);
-          }
-        }
-      } catch(e) {}
-
-      // 降级兜底处理
-      return parseFallback(fullText);
-    }
-
-    function buildWordsFromKatakana(fullText, katakanaStr) {
-      const result = [];
       for (let i = 0; i < fullText.length; i++) {
-        const char = fullText[i];
-        const isSym = isSymbolChar(char);
-        let kata = char;
-        let romaji = char;
-
-        if (!isSym && window.wanakana) {
-          try {
-            // 如果是假名或已知字，自动转换罗马字
-            kata = window.wanakana.toKatakana(char);
-            romaji = window.wanakana.toRomaji(char);
-            if (romaji === char && i < katakanaStr.length) {
-              // 从 API 转换结果中取对应位置的片假名
-              kata = katakanaStr[i] || char;
-              romaji = window.wanakana.toRomaji(kata);
-            }
-          } catch(e){}
-        }
-
-        result.push({
-          text: char,
-          kata: kata,
-          romaji: romaji,
-          startIndex: i,
-          endIndex: i + 1,
-          isSymbol: isSym
-        });
-      }
-      return result;
-    }
-
-    function parseFallback(fullText) {
-      const result = [];
-      for (let i = 0; i < fullText.length; i++) {
-        const char = fullText[i];
-        const isSym = isSymbolChar(char);
-        let kata = char;
-        let romaji = char;
-
-        if (!isSym && window.wanakana) {
-          try {
-            kata = window.wanakana.toKatakana(char);
-            romaji = window.wanakana.toRomaji(char);
-          } catch(e){}
-        }
-
-        result.push({
-          text: char,
-          kata: kata,
-          romaji: romaji,
-          startIndex: i,
-          endIndex: i + 1,
-          isSymbol: isSym
-        });
-      }
-      return result;
-    }
-
-    function autoSkipSymbols() {
-      while (targetIndex < targetText.length && isSymbolChar(targetText[targetIndex])) {
-        targetIndex++;
-      }
-    }
-
-    function renderText(showHint = false) {
-      isShowingHint = showHint;
-      textContainer.innerHTML = '';
-      let currentElem = null;
-
-      parsedWords.forEach(word => {
-        const isCurrent = targetIndex >= word.startIndex && targetIndex < word.endIndex;
-        const wordSpan = document.createElement('span');
-        wordSpan.className = 'word-box';
-
-        if (showHint && isCurrent && !word.isSymbol) {
-          const hint = document.createElement('div');
-          hint.className = 'hint-tooltip';
-          hint.innerText = `${word.kata} (${word.romaji})`;
-          wordSpan.appendChild(hint);
-        }
-
-        for (let idx = word.startIndex; idx < word.endIndex; idx++) {
-          const char = targetText[idx];
-          const charSpan = document.createElement('span');
-          charSpan.className = 'char-box';
-
-          if (isSymbolChar(char
+        const char =
