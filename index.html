@@ -51,11 +51,10 @@
     }
     .progress-bar-fill.warning { background: #ef4444; }
 
-    /* 优化点 1：顶部增加 padding-top: 42px，专门留出提示气泡的空间 */
     .text-display {
       font-size: 20px;
-      line-height: 2.3;
-      padding: 42px 16px 16px 16px; 
+      line-height: 2.8; /* 加高行高，为下方提示气泡留足空间 */
+      padding: 20px 16px 30px 16px;
       background: #f8fafc;
       border-radius: 12px;
       border: 1px solid #e2e8f0;
@@ -67,7 +66,7 @@
       position: relative;
     }
 
-    .word-box { position: relative; display: inline-block; margin: 0 1px; }
+    .word-box { position: relative; display: inline-block; margin: 0 2px; }
     .char-box { position: relative; display: inline-block; }
     .char-passed { color: #10b981; font-weight: bold; }
     .char-current {
@@ -77,17 +76,17 @@
       border-radius: 2px;
     }
     
-    /* 优化点 2：优化提示气泡的显示高度与防遮挡逻辑 */
+    /* 核心修改：改为定位在文字正下方 (bottom)，彻底不会被顶端裁剪 */
     .hint-tooltip {
       position: absolute;
-      top: -36px;
+      bottom: -32px;
       left: 50%;
       transform: translateX(-50%);
       background: #4f46e5;
       color: white;
       font-size: 12px;
       font-weight: 600;
-      padding: 3px 10px;
+      padding: 2px 8px;
       border-radius: 6px;
       white-space: nowrap;
       box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
@@ -96,7 +95,7 @@
     }
     @keyframes bounce {
       0%, 100% { transform: translate(-50%, 0); }
-      50% { transform: translate(-50%, -4px); }
+      50% { transform: translate(-50%, 4px); }
     }
 
     input.typing-input {
