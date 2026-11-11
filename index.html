@@ -24,17 +24,18 @@
       border: 1px solid #e2e8f0;
     }
     h1 { font-size: 20px; color: #1e293b; text-align: center; margin-bottom: 16px; }
-    
+
     .custom-text-input {
       width: 100%;
       padding: 10px;
       font-size: 13px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
-      max-height: 60px;
+      height: 60px;
       resize: vertical;
+      margin-bottom: 12px;
     }
-    
+
     .progress-bar-bg {
       width: 100%;
       height: 8px;
@@ -52,13 +53,13 @@
     .progress-bar-fill.warning { background: #ef4444; }
 
     .text-display {
-      font-size: 20px;
+      font-size: 22px;
       line-height: 2.8;
       padding: 24px 16px;
       background: #f8fafc;
       border-radius: 12px;
       border: 1px solid #e2e8f0;
-      height: 230px;
+      height: 240px;
       overflow-y: auto;
       scroll-behavior: smooth;
       margin-bottom: 16px;
@@ -66,8 +67,8 @@
       position: relative;
     }
 
-    .word-box { position: relative; display: inline-block; margin: 0 2px; }
-    .char-box { position: relative; display: inline-block; }
+    .word-box { position: relative; display: inline-block; margin: 0 1px; }
+    .char-box { position: relative; display: inline-block; padding: 0 1px; }
     .char-passed { color: #10b981; font-weight: bold; }
     .char-current {
       background: #e0e7ff;
@@ -75,27 +76,27 @@
       border-bottom: 3px solid #4f46e5;
       border-radius: 2px;
     }
-    
+
     .hint-tooltip {
       position: absolute;
-      bottom: -32px;
+      top: -34px;
       left: 50%;
       transform: translateX(-50%);
       background: #4f46e5;
       color: white;
       font-size: 12px;
       font-weight: 600;
-      padding: 2px 10px;
+      padding: 2px 8px;
       border-radius: 6px;
       white-space: nowrap !important;
       word-break: keep-all !important;
       box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
       animation: bounce 1s infinite;
-      z-index: 9999;
+      z-index: 999;
     }
     @keyframes bounce {
       0%, 100% { transform: translate(-50%, 0); }
-      50% { transform: translate(-50%, 4px); }
+      50% { transform: translate(-50%, -4px); }
     }
 
     input.typing-input {
@@ -130,20 +131,20 @@
       <input type="text" id="type-input" class="typing-input" placeholder="点击此处切换日文输入法开始打字..." autofocus />
 
       <div class="info-bar">
-        <span>不打字静置 5 秒自动弹出：片假名 + 罗马字</span>
+        <span>静置 3 秒自动弹出：片假名 + 罗马字（标点与括号自动跳过）</span>
         <span id="progress-text">进度: 0 / 0</span>
       </div>
     </div>
   </div>
 
   <script>
-    // 基础词汇字典映射
-    const LEXICON = [
+    const LEXICON_RAW = [
       { text: '注意事項', kata: 'チュウイジコウ' },
       { text: '注意', kata: 'チュウイ' },
       { text: '事項', kata: 'ジコウ' },
       { text: '課題', kata: 'カダイ' },
       { text: '内容', kata: 'ナイヨウ' },
+      { text: '授業資料', kata: 'ジュギョウシリョウ' },
       { text: '授業', kata: 'ジュギョウ' },
       { text: '資料', kata: 'シリョウ' },
       { text: '掲載', kata: 'ケイサイ' },
@@ -158,6 +159,8 @@
       { text: '先生', kata: 'センセイ' }
     ];
 
+    const LEXICON = LEXICON_RAW.sort((a, b) => b.text.length - a.text.length);
+
     let targetText = '';
     let parsedWords = [];
     let targetIndex = 0;
@@ -171,8 +174,9 @@
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
 
+    // 判断是否为需要自动跳过的符号/括号/标点
     function isSymbolChar(ch) {
-      return RegExp(/[\s\(\)\（\）\「\」\『\』\【\】\、\。\！\？\!\?\:\：\;\；]/).test(ch);
+      return /[\s\(\)\（\）\[\]【】\{\}\<\>《》「」『』\、\。\！\？\!\?\:\：\;\；\-\—\~\～\…]/.test(ch);
     }
 
     function parseTextIntoWords(fullText) {
@@ -182,7 +186,6 @@
       while (i < fullText.length) {
         const char = fullText[i];
 
-        // 1. 标点符号直接过
         if (isSymbolChar(char)) {
           result.push({
             text: char,
@@ -196,7 +199,6 @@
           continue;
         }
 
-        // 2. 匹配词典
         let matched = false;
         for (const wordObj of LEXICON) {
           if (fullText.startsWith(wordObj.text, i)) {
@@ -215,7 +217,6 @@
           }
         }
 
-        // 3. 兜底单字处理
         if (!matched) {
           let kata = char;
           let romaji = char;
@@ -237,6 +238,7 @@
       return result;
     }
 
+    // 自动跳过连续的标点符号
     function autoSkipSymbols() {
       while (targetIndex < targetText.length && isSymbolChar(targetText[targetIndex])) {
         targetIndex++;
@@ -291,12 +293,17 @@
       }
     }
 
+    // 3 秒倒计时监控
     setInterval(() => {
-      const remaining = Math.max(0, 5 - (Date.now() - lastActiveTime) / 1000);
-      progressBar.style.width = (remaining / 5 * 100) + '%';
-      if (remaining <= 2) progressBar.classList.add('warning');
+      const remaining = Math.max(0, 3 - (Date.now() - lastActiveTime) / 1000);
+      progressBar.style.width = (remaining / 3 * 100) + '%';
+      
+      if (remaining <= 1) progressBar.classList.add('warning');
       else progressBar.classList.remove('warning');
-      if (remaining <= 0 && !isShowingHint) renderText(true);
+
+      if (remaining <= 0 && !isShowingHint) {
+        renderText(true);
+      }
     }, 100);
 
     function handleInput() {
@@ -308,7 +315,10 @@
       let matchLen = 0;
 
       for (let i = Math.min(val.length, rem.length); i > 0; i--) {
-        if (val.slice(-i) === rem.slice(0, i)) { matchLen = i; break; }
+        if (val.slice(-i) === rem.slice(0, i)) { 
+          matchLen = i; 
+          break; 
+        }
       }
 
       if (matchLen > 0) {
@@ -329,18 +339,4 @@
       lastActiveTime = Date.now();
       textContainer.scrollTop = 0;
       renderText(false);
-      typeInput.focus();
-    }
-
-    customTextEl.addEventListener('input', resetGame);
-    customTextEl.addEventListener('change', resetGame);
-    typeInput.addEventListener('input', handleInput);
-    typeInput.addEventListener('compositionstart', () => isComposing = true);
-    typeInput.addEventListener('compositionend', () => { isComposing = false; handleInput(); });
-
-    // 确保 DOM 加载完毕后立即渲染
-    document.addEventListener('DOMContentLoaded', resetGame);
-    window.onload = resetGame;
-  </script>
-</body>
-</html>
+      typeInput.
