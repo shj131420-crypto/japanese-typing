@@ -81,4 +81,1208 @@
           <button data-level="N4" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">N4</button>
           <button data-level="N3" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">N3</button>
           <button data-level="N2" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">N2</button>
-          <button data-level="N1" class="level-btn px-3 py-
+          <button data-level="N1" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">N1</button>
+        </div>
+
+        <!-- 5大模式切换：单词模式 / 常用单词 / 语法模式 / 常用语法 / 错题本 -->
+        <div class="flex flex-wrap bg-slate-800/80 p-1 rounded-xl border border-slate-700/50 gap-1" id="modeSelector">
+          <button data-mode="word" class="mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-slate-700 text-white shadow">单词模式</button>
+          <button data-mode="common_word" class="mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">常用单词</button>
+          <button data-mode="grammar" class="mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">语法模式</button>
+          <button data-mode="common_grammar" class="mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">常用语法</button>
+          <button data-mode="mistakes" class="mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-rose-400 hover:text-rose-300 flex items-center gap-1">
+            错题本 <span id="mistakeBadge" class="bg-rose-500/20 text-rose-300 px-1.5 rounded-full text-[10px]">0</span>
+          </button>
+        </div>
+
+        <!-- 语速控制 -->
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+          <span>语速:</span>
+          <select id="speechRateSelect" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 outline-none">
+            <option value="0.75">0.75x</option>
+            <option value="1.0" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 视图 1：打字练习主界面 ==================== -->
+  <main id="view-practice" class="flex-1 max-w-4xl w-full mx-auto px-4 py-5 flex flex-col justify-between gap-4">
+
+    <!-- 顶部词库分组与换一批控制 -->
+    <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-3">
+        <span id="poolTitleLabel" class="font-bold text-slate-200">JLPT N5 词汇库 (共 0 词)</span>
+        <span id="batchProgressLabel" class="text-slate-400 mono-font">1 / 20</span>
+        <button onclick="nextBatch()" class="text-indigo-400 hover:text-indigo-300 underline font-medium transition">换一批</button>
+      </div>
+      <div class="flex items-center gap-4 text-slate-400">
+        <span>速度: <strong id="statKpm" class="text-indigo-400 mono-font">0</strong> KPM</span>
+        <span>准确率: <strong id="statAcc" class="text-emerald-400 mono-font">100%</strong></span>
+        <span>连击: <strong id="statStreak" class="text-amber-400 mono-font">0</strong></span>
+      </div>
+    </div>
+
+    <!-- 细进度条 -->
+    <div class="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden">
+      <div id="progressBarFill" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-300" style="width: 5%"></div>
+    </div>
+
+    <!-- 核心打字卡片 -->
+    <div id="practiceCard" class="relative bg-gradient-to-b from-slate-900 to-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-2xl flex flex-col items-center justify-center min-h-[390px] transition-all">
+
+      <!-- 卡片顶部标签 -->
+      <div class="w-full flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <span id="cardLevelBadge" class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">N5</span>
+          <span id="cardPosBadge" class="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">名词</span>
+        </div>
+        <button onclick="speakCurrentItem()" class="px-3 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-xs text-slate-300 flex items-center gap-1.5 border border-slate-700/60 transition" title="按 Tab 键朗读">
+          <span>🔊</span> 朗读 (Tab)
+        </button>
+      </div>
+
+      <!-- 主显示区（单词汉字 或 语法词条） -->
+      <div class="text-center my-2 w-full">
+        <div id="mainDisplay" class="jp-font text-4xl sm:text-5xl font-bold text-white tracking-wider mb-5 leading-snug">
+          学生
+        </div>
+
+        <!-- 假名输入槽位（单词、常用单词、语法、常用语法全部采用统一的纯平假名逐字击打） -->
+        <div id="kanaTargetContainer" class="inline-flex flex-col items-center justify-center bg-slate-950/70 border border-slate-800/90 rounded-xl px-7 py-4 mb-4 min-w-[270px]">
+          <div id="kanaDisplay" class="jp-font text-2xl sm:text-3xl font-bold tracking-widest flex flex-wrap justify-center gap-1.5">
+            <!-- 动态假名 -->
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-slate-800/80 w-full flex items-center justify-center gap-2">
+            <span class="text-[11px] text-slate-500 uppercase tracking-wider">ROMANJI:</span>
+            <span id="romajiBufferDisplay" class="mono-font text-base text-indigo-400 font-bold min-h-[24px] tracking-wider"></span>
+            <span class="w-0.5 h-4 bg-indigo-400 animate-pulse"></span>
+          </div>
+        </div>
+
+        <!-- 中文释义（自动精准翻译为中文） -->
+        <div id="meaningDisplay" class="text-xl sm:text-2xl font-bold text-amber-300 mb-2 px-4">
+          学生
+        </div>
+
+        <!-- 接续规则（语法模式）或 Romaji 参考（单词模式） -->
+        <div id="subHintDisplay" class="text-xs sm:text-sm text-slate-400 mb-3">
+          Romaji参考: gakusei
+        </div>
+
+        <!-- 例句展示区（所有模式均展示地道日语例句 + 中文翻译 + 单独例句朗读） -->
+        <div id="exampleBox" class="max-w-xl mx-auto mt-2 bg-slate-800/40 border border-slate-700/50 rounded-xl px-4 py-3 text-left">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p id="exampleJpText" class="jp-font text-sm sm:text-base text-slate-200 font-medium">
+                私は大学の学生です。
+              </p>
+              <p id="exampleCnText" class="text-xs sm:text-sm text-slate-400 mt-1">
+                我是大学生。
+              </p>
+            </div>
+            <button onclick="speakExample()" class="shrink-0 px-2.5 py-1 rounded-lg bg-slate-700/70 hover:bg-slate-600 text-xs text-slate-200 transition">
+              🔊 读例句
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 隐藏/辅助输入框 -->
+      <div class="w-full max-w-md mt-4">
+        <input
+          type="text"
+          id="hiddenTypingInput"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="点击此处或直接敲击英文键盘输入罗马音..."
+          class="w-full bg-slate-800/50 border border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-2.5 text-center text-sm text-slate-200 placeholder-slate-500 outline-none transition"
+        />
+      </div>
+
+      <!-- 底部快捷键栏 -->
+      <div class="w-full mt-6 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        <div class="flex flex-wrap items-center gap-3">
+          <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300">Tab</kbd> 朗读</span>
+          <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300">Ctrl+H</kbd> 盲打切换</span>
+          <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300">Enter</kbd> 跳过</span>
+        </div>
+        <button onclick="skipCurrentItem()" class="text-slate-400 hover:text-indigo-400 transition flex items-center gap-1">
+          跳过此题 <span>»</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== 视图 2：全量词库与语法浏览器 ==================== -->
+  <section id="view-browse" class="hidden flex-1 max-w-6xl w-full mx-auto px-4 py-6 flex flex-col gap-4">
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          id="browseSearchInput"
+          oninput="renderBrowseList()"
+          placeholder="🔍 搜索日文汉字、平假名或中文释义..."
+          class="bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-xl px-4 py-2 text-sm text-slate-200 placeholder-slate-500 outline-none w-64 sm:w-80"
+        />
+        <span id="browseCountBadge" class="text-xs text-slate-400 px-2">当前筛选共 0 条</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="toggleBrowseMask('kana')" id="maskKanaBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+          🙈 隐藏假名
+        </button>
+        <button onclick="toggleBrowseMask('meaning')" id="maskMeaningBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+          🙈 隐藏中文
+        </button>
+      </div>
+    </div>
+
+    <div id="browseListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <!-- 动态渲染词条卡片 -->
+    </div>
+
+    <div class="text-center py-4">
+      <button id="loadMoreBtn" onclick="loadMoreBrowseItems()" class="hidden px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-indigo-300 border border-slate-700 transition">
+        加载更多词条...
+      </button>
+    </div>
+  </section>
+
+  <!-- ==================== 弹窗：云端词库同步与自定义导入 ==================== -->
+  <div id="cloudModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>☁️</span> 云端词库同步与自定义扩展
+        </h3>
+        <button onclick="closeModal('cloudModal')" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+
+      <div class="space-y-4 text-sm">
+        <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-semibold text-indigo-300">云端词库与自动中文翻译状态</span>
+            <button onclick="forceReloadRemoteVocab()" class="text-xs px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">
+              重新同步词库
+            </button>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            已收录 N5–N1 全部联网词汇及常用词库。遇到英文释义会自动调用双通道翻译引擎转为中文并永久缓存到本地。
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase mb-1.5">批量添加自定义单词 / 语法</label>
+          <p class="text-xs text-slate-500 mb-2">
+            每行一条：<code class="text-indigo-300">日文词条 | 平假名 | 中文意思 | 例句 | 例句翻译</code>
+          </p>
+          <textarea id="bulkImportText" rows="5" placeholder="図書館 | としょかん | 图书馆 | 図書館で勉強します。 | 在图书馆学习。&#10;〜おかげで | おかげで | 多亏了…… | 先生のおかげで合格した。 | 多亏老师及格了。" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:border-indigo-500 outline-none jp-font"></textarea>
+          <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <select id="bulkTargetLevel" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+              <option value="N5">N5 级别</option>
+              <option value="N4">N4 级别</option>
+              <option value="N3">N3 级别</option>
+              <option value="N2">N2 级别</option>
+              <option value="N1">N1 级别</option>
+            </select>
+            <select id="bulkTargetMode" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+              <option value="word">添加到单词库</option>
+              <option value="common_word">添加到常用单词</option>
+              <option value="grammar">添加到语法库</option>
+              <option value="common_grammar">添加到常用语法</option>
+            </select>
+            <button onclick="importBulkText()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition">
+              确认导入
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 text-white px-4 py-2 rounded-full text-xs font-medium shadow-xl opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+    提示信息
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. 智能罗马音映射表
+    // =========================================================================
+    const ROMAJI_MAP = {
+      'あ':['a'], 'い':['i'], 'う':['u','wu'], 'え':['e'], 'お':['o'],
+      'か':['ka','ca'], 'き':['ki'], 'く':['ku','cu','qu'], 'け':['ke'], 'こ':['ko','co'],
+      'さ':['sa'], 'し':['shi','si','ci'], 'す':['su'], 'せ':['se','ce'], 'そ':['so'],
+      'た':['ta'], 'ち':['chi','ti'], 'つ':['tsu','tu'], 'て':['te'], 'と':['to'],
+      'な':['na'], 'に':['ni'], 'ぬ':['nu'], 'ね':['ne'], 'の':['no'],
+      'は':['ha'], 'ひ':['hi'], 'ふ':['fu','hu'], 'へ':['he'], 'ほ':['ho'],
+      'ま':['ma'], 'み':['mi'], 'む':['mu'], 'め':['me'], 'も':['mo'],
+      'や':['ya'], 'ゆ':['yu'], 'よ':['yo'],
+      'ら':['ra'], 'り':['ri'], 'る':['ru'], 'れ':['re'], 'ろ':['ro'],
+      'わ':['wa'], 'を':['wo','o'], 'ん':['n','nn','n\''],
+      'が':['ga'], 'ぎ':['gi'], 'ぐ':['gu'], 'げ':['ge'], 'ご':['go'],
+      'ざ':['za'], 'じ':['ji','zi'], 'ず':['zu'], 'ぜ':['ze'], 'ぞ':['zo'],
+      'だ':['da'], 'ぢ':['di','ji'], 'づ':['du','zu'], 'で':['de'], 'ど':['do'],
+      'ば':['ba'], 'び':['bi'], 'ぶ':['bu'], 'べ':['be'], 'ぼ':['bo'],
+      'ぱ':['pa'], 'ぴ':['pi'], 'ぷ':['pu'], 'ぺ':['pe'], 'ぽ':['po'],
+      'きゃ':['kya'], 'きゅ':['kyu'], 'きょ':['kyo'],
+      'しゃ':['sha','sya'], 'しゅ':['shu','syu'], 'しょ':['sho','syo'],
+      'ちゃ':['cha','tya','cya'], 'ちゅ':['chu','tyu','cyu'], 'ちょ':['cho','tyo','cyo'],
+      'にゃ':['nya'], 'にゅ':['nyu'], 'にょ':['nyo'],
+      'ひゃ':['hya'], 'ひゅ':['hyu'], 'ひょ':['hyo'],
+      'みゃ':['mya'], 'みゅ':['myu'], 'みょ':['myo'],
+      'りゃ':['rya'], 'りゅ':['ryu'], 'りょ':['ryo'],
+      'ぎゃ':['gya'], 'ぎゅ':['gyu'], 'ぎょ':['gyo'],
+      'じゃ':['ja','jya','zya'], 'じゅ':['ju','jyu','zyu'], 'じょ':['jo','jyo','zyo'],
+      'びゃ':['bya'], 'びゅ':['byu'], 'びょ':['byo'],
+      'ぴゃ':['pya'], 'ぴゅ':['pyu'], 'ぴょ':['pyo'],
+      'ふぁ':['fa'], 'ふぃ':['fi'], 'ふぇ':['fe'], 'ふぉ':['fo'],
+      'てぃ':['thi'], 'でぃ':['dhi'], 'うぃ':['wi'], 'うぇ':['we'], 'うぉ':['wo'],
+      'ぁ':['la','xa'], 'ぃ':['li','xi'], 'ぅ':['lu','xu'], 'ぇ':['le','xe'], 'ぉ':['lo','xo'],
+      'ゃ':['lya','xya'], 'ゅ':['lyu','xyu'], 'ょ':['lyo','xyo'],
+      'っ':['ltu','xtu','ltsu'], 'ー':['-'], '〜':['~','-'], '・':['/']
+    };
+    const SMALL_Y = new Set(['ゃ','ゅ','ょ','ぁ','ぃ','ぅ','ぇ','ぉ']);
+
+    // =========================================================================
+    // 2. 四大核心精选词库（全中文释义 + 接续 + 日汉对照例句）
+    // =========================================================================
+    // 2.1 考级基础单词
+    const BASE_WORDS = {
+      N5: [
+        { kanji: "学生", kana: "がくせい", pos: "名词", meaning: "学生", example: "私は大学の学生です。", exampleCn: "我是大学生。" },
+        { kanji: "先生", kana: "せんせい", pos: "名词", meaning: "老师，医生", example: "田中先生はとても親切です。", exampleCn: "田中老师非常亲切。" },
+        { kanji: "食べる", kana: "たべる", pos: "一段动词", meaning: "吃", example: "毎朝パンを食べます。", exampleCn: "每天早上吃面包。" },
+        { kanji: "飲む", kana: "のむ", pos: "五段动词", meaning: "喝", example: "冷たい水を飲みます。", exampleCn: "喝凉水。" },
+        { kanji: "勉強", kana: "べんきょう", pos: "名词/サ变", meaning: "学习", example: "毎日日本語を勉強しています。", exampleCn: "每天都在学习日语。" },
+        { kanji: "電車", kana: "でんしゃ", pos: "名词", meaning: "电车", example: "電車で会社に通います。", exampleCn: "坐电车去公司上班。" }
+      ],
+      N4: [
+        { kanji: "準備", kana: "じゅんび", pos: "名词/サ变", meaning: "准备", example: "旅行の準備ができました。", exampleCn: "旅行的准备已经做好了。" },
+        { kanji: "約束", kana: "やくそく", pos: "名词/サ变", meaning: "约定，约会", example: "友達と映画を見る約束をしました。", exampleCn: "和朋友约好一起看电影。" },
+        { kanji: "経験", kana: "けいけん", pos: "名词/サ变", meaning: "经验，经历", example: "日本へ行った経験があります。", exampleCn: "我有去过日本的经历。" },
+        { kanji: "必要", kana: "ひつよう", pos: "な形容词", meaning: "必要的，必需的", example: "パスポートが必要です。", exampleCn: "需要护照。" }
+      ],
+      N3: [
+        { kanji: "影響", kana: "えいきょう", pos: "名词/サ变", meaning: "影响", example: "台風の影響で電車が遅れています。", exampleCn: "受台风影响，电车晚点了。" },
+        { kanji: "解決", kana: "かいけつ", pos: "名词/サ变", meaning: "解决", example: "問題が無事に解決しました。", exampleCn: "问题顺利解决了。" },
+        { kanji: "確認", kana: "かくにん", pos: "名词/サ变", meaning: "确认", example: "メールの内容を確認してください。", exampleCn: "请确认邮件内容。" }
+      ],
+      N2: [
+        { kanji: "傾向", kana: "けいこう", pos: "名词", meaning: "倾向，趋势", example: "最近は若者の車離れの傾向がある。", exampleCn: "最近年轻人有不愿买车的倾向。" },
+        { kanji: "把握", kana: "はあく", pos: "名词/サ变", meaning: "把握，掌握", example: "現状を正確に把握する必要がある。", exampleCn: "有必要准确掌握现状。" },
+        { kanji: "普及", kana: "ふきゅう", pos: "名词/サ变", meaning: "普及", example: "スマートフォンが急速に普及した。", exampleCn: "智能手机迅速普及了。" }
+      ],
+      N1: [
+        { kanji: "証言", kana: "しょうげん", pos: "名词/サ变", meaning: "证言，证据", example: "目撃者の証言が事件解決の鍵となった。", exampleCn: "目击者的证言成了破案的关键。" },
+        { kanji: "溢れる", kana: "あふれる", pos: "一段动词", meaning: "充满，洋溢，溢出", example: "会場は熱気に溢れていた。", exampleCn: "会场里洋溢着热情。" },
+        { kanji: "妥協", kana: "だきょう", pos: "名词/サ变", meaning: "妥协，让步", example: "品質に関しては一切妥協しない。", exampleCn: "在品质方面绝不妥协。" }
+      ]
+    };
+
+    // 2.2 新增【常用单词模式】（高频日常口语、生活、职场实用词）
+    const COMMON_WORDS = {
+      N5: [
+        { kanji: "大丈夫", kana: "だいじょうぶ", pos: "常用口语", meaning: "没关系，不要紧，放心", example: "心配しないで、大丈夫ですよ。", exampleCn: "别担心，没关系的。" },
+        { kanji: "美味しい", kana: "おいしい", pos: "常用口语", meaning: "好吃的，美味的", example: "このケーキ、すごく美味しい！", exampleCn: "这个蛋糕超级好吃！" },
+        { kanji: "忙しい", kana: "いそがしい", pos: "常用口语", meaning: "忙碌的", example: "今週は仕事がとても忙しいです。", exampleCn: "这周工作非常忙。" },
+        { kanji: "買い物", kana: "かいもの", pos: "常用生活", meaning: "购物，买东西", example: "スーパーへ買い物に行きます。", exampleCn: "去超市买东西。" },
+        { kanji: "携帯電話", kana: "けいたいでんわ", pos: "常用生活", meaning: "手机", example: "携帯電話を家に忘れました。", exampleCn: "把手机忘在家里了。" },
+        { kanji: "天気予報", kana: "てんきよほう", pos: "常用生活", meaning: "天气预报", example: "天気予報によると明日は晴れだ。", exampleCn: "据天气预报说明天是晴天。" }
+      ],
+      N4: [
+        { kanji: "気をつける", kana: "きをつける", pos: "常用高频", meaning: "小心，注意", example: "車に気をつけて帰ってください。", exampleCn: "回去路上请小心车辆。" },
+        { kanji: "間に合う", kana: "まにあう", pos: "常用高频", meaning: "来得及，赶得上", example: "急げば終電に間に合います。", exampleCn: "抓紧的话能赶上末班车。" },
+        { kanji: "連絡", kana: "れんらく", pos: "常用职场", meaning: "联系，联络", example: "着いたらすぐ連絡してください。", exampleCn: "到了之后请马上联系我。" },
+        { kanji: "相談", kana: "そうだん", pos: "常用高频", meaning: "商量，咨询", example: "ちょっと相談したいことがあります。", exampleCn: "我有点事想和你商量一下。" },
+        { kanji: "残業", kana: "ざんぎょう", pos: "常用职场", meaning: "加班", example: "今日は遅くまで残業しなければなりません。", exampleCn: "今天必须加班到很晚。" }
+      ],
+      N3: [
+        { kanji: "懐かしい", kana: "なつかしい", pos: "常用情感", meaning: "怀念的，令人怀念", example: "昔の写真を見て懐かしくなった。", exampleCn: "看到以前的照片觉得很怀念。" },
+        { kanji: "羨ましい", kana: "うらやましい", pos: "常用情感", meaning: "羡慕的", example: "日本語がペラペラで羨ましいです。", exampleCn: "日语说得这么流利真让人羡慕。" },
+        { kanji: "勘違い", kana: "かんちがい", pos: "常用高频", meaning: "误会，搞错", example: "時間を勘違いして遅れてしまった。", exampleCn: "把时间记错了结果迟到了。" },
+        { kanji: "締め切り", kana: "しめきり", pos: "常用职场", meaning: "截止日期", example: "レポートの締め切りは明日までだ。", exampleCn: "报告的截止日期到明天为止。" },
+        { kanji: "わがまま", kana: "わがまま", pos: "常用口语", meaning: "任性", example: "そんなわがままを言ってはいけません。", exampleCn: "不可以这么任性。" }
+      ],
+      N2: [
+        { kanji: "手に入れる", kana: "てにいれる", pos: "常用惯用", meaning: "得到，弄到手", example: "やっとコンサートのチケットを手に入れた。", exampleCn: "终于弄到了演唱会的门票。" },
+        { kanji: "気にする", kana: "きにする", pos: "常用口语", meaning: "在意，介意", example: "失敗したことはもう気にしないで。", exampleCn: "失败的事就别再介意了。" },
+        { kanji: "打ち合わせ", kana: "うちあわせ", pos: "常用商务", meaning: "碰头会，事先商量", example: "午後から取引先と打ち合わせがある。", exampleCn: "下午要和客户开碰头会。" },
+        { kanji: "割り勘", kana: "わりかん", pos: "常用生活", meaning: "AA制，平摊费用", example: "今日の飲み代は割り勘にしよう。", exampleCn: "今天的酒钱咱们AA制吧。" }
+      ],
+      N1: [
+        { kanji: "腑に落ちる", kana: "ふにおちる", pos: "常用惯用", meaning: "想通，心服口服", example: "彼の説明を聞いてようやく腑に落ちた。", exampleCn: "听了他的解释终于想通了。" },
+        { kanji: "一目置く", kana: "いちもくおく", pos: "常用惯用", meaning: "刮目相看，敬重三分", example: "社内では誰もが彼に一目置いている。", exampleCn: "公司里谁都对他敬重三分。" },
+        { kanji: "根回し", kana: "ねまわし", pos: "常用商务", meaning: "事先疏通，打招呼", example: "会議の前に部長に根回しをしておく。", exampleCn: "开会前先跟部长疏通一下。" }
+      ]
+    };
+
+    // 2.3 考级语法模式（非填空，纯平假名直接输入）
+    const BASE_GRAMMAR = {
+      N5: [
+        { kanji: "〜ています", kana: "ています", pos: "N5 语法", meaning: "正在……；处于某种状态", rule: "接续：动词て形 + います", example: "今、雨が降っています。", exampleCn: "现在正在下雨。" },
+        { kanji: "〜てください", kana: "てください", pos: "N5 语法", meaning: "请做……（请求、指示）", rule: "接续：动词て形 + ください", example: "ここに名前を書いてください。", exampleCn: "请在这里写上名字。" },
+        { kanji: "〜てもいいです", kana: "てもいいです", pos: "N5 语法", meaning: "可以……（表示许可）", rule: "接续：动词て形 + もいいです", example: "写真を撮ってもいいですか。", exampleCn: "可以拍照吗？" },
+        { kanji: "〜てはいけません", kana: "てはいけません", pos: "N5 语法", meaning: "不可以……；禁止……", rule: "接续：动词て形 + はいけません", example: "ここでタバコを吸ってはいけません。", exampleCn: "不可以在这里吸烟。" }
+      ],
+      N4: [
+        { kanji: "〜なければなりません", kana: "なければなりません", pos: "N4 语法", meaning: "必须……；不得不……", rule: "接续：动词ない形去掉ない + なければなりません", example: "毎日薬を飲まなければなりません。", exampleCn: "每天必须吃药。" },
+        { kanji: "〜つもりです", kana: "つもりです", pos: "N4 语法", meaning: "打算……；计划……", rule: "接续：动词基本形/ない形 + つもりです", example: "来年から日本へ留学するつもりです。", exampleCn: "我打算明年开始去日本留学。" },
+        { kanji: "〜かもしれません", kana: "かもしれません", pos: "N4 语法", meaning: "也许……；可能……", rule: "接续：动词/形容词普通形 + かもしれません", example: "明日は雪が降るかもしれません。", exampleCn: "明天可能会下雪。" }
+      ],
+      N3: [
+        { kanji: "〜おかげで", kana: "おかげで", pos: "N3 语法", meaning: "多亏了……（积极原因）", rule: "接续：普通形・名词の + おかげで", example: "先生のおかげで試験に合格しました。", exampleCn: "多亏了老师，我通过了考试。" },
+        { kanji: "〜せいで", kana: "せいで", pos: "N3 语法", meaning: "都怪……；因为……（消极原因）", rule: "接续：普通形・名词の + せいで", example: "寝坊したせいで遅刻しました。", exampleCn: "都怪睡过头了才迟到的。" },
+        { kanji: "〜うちに", kana: "うちに", pos: "N3 语法", meaning: "趁着……；在……期间", rule: "接续：动词基本形/ている・名词の + うちに", example: "温かいうちに食べてください。", exampleCn: "请趁热吃。" }
+      ],
+      N2: [
+        { kanji: "〜に違いない", kana: "にちがいない", pos: "N2 语法", meaning: "肯定……；一定……（高度确信）", rule: "接续：动词/形容词普通形・名词 + に違いない", example: "鍵がない。部屋に忘れたに違いない。", exampleCn: "钥匙不见了，肯定是忘在房间里了。" },
+        { kanji: "〜ざるを得ない", kana: "ざるをえない", pos: "N2 语法", meaning: "不得不……；只好……", rule: "接续：动词ない形去掉ない + ざるを得ない", example: "台風が来ているので、旅行を中止せざるを得ない。", exampleCn: "台风来了，只好取消旅行。" }
+      ],
+      N1: [
+        { kanji: "〜の末に", kana: "のすえに", pos: "N1 语法", meaning: "经过……之后终于……", rule: "接续：动词た形・名词の + 末（に）", example: "長年の努力の末に、ついに新薬の開発に成功した。", exampleCn: "经过多年的努力，终于成功研发了新药。" },
+        { kanji: "〜を余儀なくされる", kana: "をよぎなくされる", pos: "N1 语法", meaning: "被迫……；不得不……", rule: "接续：名词 + を余儀なくされる", example: "悪天候のため、計画の変更を余儀なくされた。", exampleCn: "由于天气恶劣，被迫更改了计划。" }
+      ]
+    };
+
+    // 2.4 新增【常用语法模式】（日常交流、日剧动漫最高频口语语法）
+    const COMMON_GRAMMAR = {
+      N5: [
+        { kanji: "〜たいです", kana: "たいです", pos: "常用口语语法", meaning: "想做……（表达愿望）", rule: "接续：动词ます形去掉ます + たいです", example: "今すぐ冷たいビールが飲みたいです。", exampleCn: "我现在就想喝冰啤酒。" },
+        { kanji: "〜たことがあります", kana: "たことがあります", pos: "常用口语语法", meaning: "曾经做过……（谈论经历）", rule: "接续：动词た形 + ことがあります", example: "北海道へ行ったことがありますか。", exampleCn: "你去过北海道吗？" },
+        { kanji: "〜ほうがいいです", kana: "ほうがいいです", pos: "常用建议语法", meaning: "最好做……（提出建议）", rule: "接续：动词た形/ない形 + ほうがいいです", example: "疲れているなら、早く寝たほうがいいですよ。", exampleCn: "如果累了的话，最好早点睡哦。" },
+        { kanji: "〜ながら", kana: "ながら", pos: "常用口语语法", meaning: "一边……一边……", rule: "接续：动词ます形去掉ます + ながら", example: "音楽を聴きながら勉強します。", exampleCn: "一边听音乐一边学习。" }
+      ],
+      N4: [
+        { kanji: "〜てしまいます", kana: "てしまいます", pos: "常用口语语法", meaning: "不小心……；完全做完了……", rule: "接续：动词て形 + しまいます（口语：ちゃう）", example: "あ、電車に傘を忘れてしまいました！", exampleCn: "啊，把雨伞忘在电车上了！" },
+        { kanji: "〜ようにしています", kana: "ようにしています", pos: "常用习惯语法", meaning: "尽量做到……；养成……的习惯", rule: "接续：动词基本形/ない形 + ようにしています", example: "健康のために毎日歩くようにしています。", exampleCn: "为了健康我尽量每天走路。" },
+        { kanji: "〜てみます", kana: "てみます", pos: "常用口语语法", meaning: "试着做……；尝试……", rule: "接续：动词て形 + みます", example: "美味しいかどうか、ちょっと食べてみます。", exampleCn: "好不好吃，我先尝一口看看。" }
+      ],
+      N3: [
+        { kanji: "〜ことにした", kana: "ことにした", pos: "常用决定语法", meaning: "决定做……（自己做出的决定）", rule: "接续：动词基本形/ない形 + ことにした", example: "来月からダイエットを始めることにした。", exampleCn: "我决定从下个月开始减肥。" },
+        { kanji: "〜わけではない", kana: "わけではない", pos: "常用委婉语法", meaning: "并不是……；并非……", rule: "接续：普通形 + わけではない", example: "お金がないわけではないが、節約したい。", exampleCn: "并不是没钱，只是想节约一点。" },
+        { kanji: "〜ばよかった", kana: "ばよかった", pos: "常用后悔语法", meaning: "要是……就好了（表达后悔）", rule: "接续：动词假定形ば + よかった", example: "傘を持ってくればよかったなあ。", exampleCn: "要是把伞带来就好了呀。" }
+      ],
+      N2: [
+        { kanji: "〜に決まっている", kana: "にきまっている", pos: "常用断定语法", meaning: "肯定……；一定……（口语强断定）", rule: "接续：普通形 + に決まっている", example: "そんなの、嘘に決まっているよ。", exampleCn: "那种事肯定是骗人的啦。" },
+        { kanji: "〜てばかりいる", kana: "てばかりいる", pos: "常用抱怨语法", meaning: "光顾着……；净是……", rule: "接续：动词て形 + ばかりいる", example: "弟はゲームをしてばかりいて勉強しない。", exampleCn: "弟弟光顾着玩游戏不学习。" }
+      ],
+      N1: [
+        { kanji: "〜どころではない", kana: "どころではない", pos: "常用强调语法", meaning: "哪有工夫……；根本谈不上……", rule: "接续：动词基本形・名词 + どころではない", example: "忙しすぎて、昼ごはんを食べるどころではない。", exampleCn: "忙得不可开交，哪有工夫吃午饭。" },
+        { kanji: "〜てたまらない", kana: "てたまらない", pos: "常用情感语法", meaning: "……得不得了；……得受不了", rule: "接续：动词/形容词て形 + たまらない", example: "試験の結果が気になってたまらない。", exampleCn: "在意考试结果在意得不得了。" }
+      ]
+    };
+
+    // =========================================================================
+    // 3. 全局状态与持久化
+    // =========================================================================
+    let state = {
+      mainView: 'practice',
+      level: 'N5',
+      mode: 'word', // 'word' | 'common_word' | 'grammar' | 'common_grammar' | 'mistakes'
+      blindMode: false,
+      autoSpeak: true,
+      batchSize: 20,
+      batchOffset: 0,
+      currentIndex: 0,
+      fullModePool: [],
+      currentBatchPool: [],
+      kanaTokens: [],
+      tokenIndex: 0,
+      romajiBuffer: '',
+      totalKeystrokes: 0,
+      correctKeystrokes: 0,
+      streak: 0,
+      startTime: null,
+      mistakes: JSON.parse(localStorage.getItem('kanatype_mistakes_v4') || '[]'),
+      customData: JSON.parse(localStorage.getItem('kanatype_custom_v4') || '{}'),
+      remoteWords: JSON.parse(localStorage.getItem('kanatype_remote_v4') || '{"N5":[],"N4":[],"N3":[],"N2":[],"N1":[]}'),
+      enCnCache: JSON.parse(localStorage.getItem('kanatype_encn_v4') || '{}'),
+      browsePage: 1,
+      browseMaskKana: false,
+      browseMaskMeaning: false
+    };
+
+    const hiddenInput = document.getElementById('hiddenTypingInput');
+
+    // =========================================================================
+    // 4. 联网词库拉取 + 双通道可靠英译中引擎（彻底解决英文释义未翻译问题）
+    // =========================================================================
+    async function initRemoteVocab() {
+      const statusEl = document.getElementById('netStatusText');
+      const totalCached = Object.values(state.remoteWords).reduce((sum, arr) => sum + arr.length, 0);
+
+      if (totalCached > 500) {
+        updateTotalBadge();
+        statusEl.textContent = `● 联网同步完成 · 共收录 ${getAllLibraryCount()} 条词条`;
+        loadModePool(true);
+        return;
+      }
+
+      try {
+        statusEl.textContent = '⏳ 正在联网拉取 N1-N5 词库...';
+        const res = await fetch('https://jlpt-vocab-api.vercel.app/api/words/all');
+        if (!res.ok) throw new Error('网络异常');
+        const data = await res.json();
+
+        const grouped = { N5: [], N4: [], N3: [], N2: [], N1: [] };
+        data.forEach(item => {
+          const lvl = 'N' + item.level;
+          if (grouped[lvl] && item.furigana) {
+            const rawEn = (item.meaning || '').trim();
+            const cachedCn = state.enCnCache[rawEn];
+            grouped[lvl].push({
+              kanji: item.word || item.furigana,
+              kana: cleanKana(item.furigana),
+              pos: lvl + ' 词汇',
+              rawEn: rawEn,
+              meaning: cachedCn || rawEn,
+              example: `「${item.word || item.furigana}」を使った例文を練習しましょう。`,
+              exampleCn: `练习使用「${item.word || item.furigana}」的日语句子。`
+            });
+          }
+        });
+
+        state.remoteWords = grouped;
+        localStorage.setItem('kanatype_remote_v4', JSON.stringify(grouped));
+        updateTotalBadge();
+        statusEl.textContent = `● 联网同步完成 · 共收录 ${getAllLibraryCount()} 条词条`;
+        loadModePool(true);
+        if (state.mainView === 'browse') renderBrowseList();
+      } catch (err) {
+        updateTotalBadge();
+        statusEl.textContent = `● 本地词库就绪 · 共收录 ${getAllLibraryCount()} 条词条`;
+        loadModePool(true);
+      }
+    }
+
+    function forceReloadRemoteVocab() {
+      localStorage.removeItem('kanatype_remote_v4');
+      state.remoteWords = { N5: [], N4: [], N3: [], N2: [], N1: [] };
+      closeModal('cloudModal');
+      initRemoteVocab();
+    }
+
+    function cleanKana(str) {
+      return (str || '').replace(/[^\u3040-\u309F\u30FC〜]/g, '');
+    }
+
+    function getAllLibraryCount() {
+      let total = Object.values(state.remoteWords).reduce((s, a) => s + a.length, 0);
+      ['N5','N4','N3','N2','N1'].forEach(l => {
+        total += (BASE_WORDS[l]?.length || 0) + (COMMON_WORDS[l]?.length || 0) + (BASE_GRAMMAR[l]?.length || 0) + (COMMON_GRAMMAR[l]?.length || 0);
+      });
+      return total;
+    }
+
+    function updateTotalBadge() {
+      document.getElementById('totalCountBadge').textContent = getAllLibraryCount();
+    }
+
+    // 双通道稳定英译中翻译器（优先 Google Translate 免费接口，失败自动降级到 MyMemory）
+    async function translateEnglishToChinese(enText) {
+      if (!enText || /[\u4e00-\u9fa5]/.test(enText)) return enText;
+      if (state.enCnCache[enText]) return state.enCnCache[enText];
+
+      // 清洗常见动词前缀 "to " 提升翻译准确率
+      const cleanedEn = enText.split(';').slice(0, 3).map(s => s.trim().replace(/^to\s+/i, '')).join('; ');
+
+      // 通道 1：Google Translate 公开接口（速度快、准确率高、支持 CORS）
+      try {
+        const gUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(cleanedEn)}`;
+        const res = await fetch(gUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data[0]) {
+            const translated = data[0].map(seg => seg[0]).join('').trim();
+            if (translated && /[\u4e00-\u9fa5]/.test(translated)) {
+              state.enCnCache[enText] = translated;
+              localStorage.setItem('kanatype_encn_v4', JSON.stringify(state.enCnCache));
+              return translated;
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 通道 2：MyMemory 备用接口
+      try {
+        const mUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanedEn)}&langpair=en|zh-CN`;
+        const res = await fetch(mUrl);
+        if (res.ok) {
+          const json = await res.json();
+          const translated = json?.responseData?.translatedText?.trim();
+          if (translated && /[\u4e00-\u9fa5]/.test(translated)) {
+            state.enCnCache[enText] = translated;
+            localStorage.setItem('kanatype_encn_v4', JSON.stringify(state.enCnCache));
+            return translated;
+          }
+        }
+      } catch (e) {}
+
+      return enText;
+    }
+
+    // 批量预翻译当前批次/浏览页的英文词条，确保翻页即见中文
+    async function batchTranslateItems(items) {
+      let hasUpdated = false;
+      for (const item of items) {
+        if (item.rawEn && !/[\u4e00-\u9fa5]/.test(item.meaning)) {
+          const cn = await translateEnglishToChinese(item.rawEn);
+          if (cn && cn !== item.meaning) {
+            item.meaning = cn;
+            hasUpdated = true;
+            // 如果刚好是当前屏幕上展示的词条，立即刷新 DOM
+            if (state.mainView === 'practice' && state.currentBatchPool[state.currentIndex] === item) {
+              document.getElementById('meaningDisplay').textContent = cn;
+            }
+          }
+        }
+      }
+      if (hasUpdated) {
+        localStorage.setItem('kanatype_remote_v4', JSON.stringify(state.remoteWords));
+        if (state.mainView === 'browse') renderBrowseList();
+      }
+    }
+
+    // =========================================================================
+    // 5. 词库数据聚合与批次管理
+    // =========================================================================
+    function getItemsByLevelAndMode(level, mode) {
+      if (mode === 'mistakes') {
+        return state.mistakes.length > 0 ? state.mistakes : BASE_WORDS.N5;
+      }
+      const customKey = `${level}_${mode}`;
+      const customArr = state.customData[customKey] || [];
+
+      if (mode === 'word') {
+        return [...(BASE_WORDS[level] || []), ...customArr, ...(state.remoteWords[level] || [])];
+      }
+      if (mode === 'common_word') {
+        return [...(COMMON_WORDS[level] || []), ...customArr];
+      }
+      if (mode === 'grammar') {
+        return [...(BASE_GRAMMAR[level] || []), ...customArr];
+      }
+      if (mode === 'common_grammar') {
+        return [...(COMMON_GRAMMAR[level] || []), ...customArr];
+      }
+      return [];
+    }
+
+    function loadModePool(resetOffset = true) {
+      state.fullModePool = getItemsByLevelAndMode(state.level, state.mode);
+      if (resetOffset) state.batchOffset = 0;
+      if (state.batchOffset >= state.fullModePool.length) state.batchOffset = 0;
+
+      state.currentBatchPool = state.fullModePool.slice(state.batchOffset, state.batchOffset + state.batchSize);
+      if (state.currentBatchPool.length === 0) {
+        state.currentBatchPool = BASE_WORDS.N5;
+      }
+      state.currentIndex = 0;
+      updateMistakeBadge();
+      updatePoolHeaderLabel();
+      renderCurrentItem();
+      // 立即在后台预翻译本批次的 20 个单词
+      batchTranslateItems(state.currentBatchPool);
+    }
+
+    function nextBatch() {
+      if (state.fullModePool.length <= state.batchSize) {
+        // 如果总数不超过 20，则随机打乱当前列表作为新一批
+        for (let i = state.currentBatchPool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [state.currentBatchPool[i], state.currentBatchPool[j]] = [state.currentBatchPool[j], state.currentBatchPool[i]];
+        }
+        state.currentIndex = 0;
+        renderCurrentItem();
+        showToast('🔀 已重新打乱本组词条顺序');
+        return;
+      }
+      state.batchOffset += state.batchSize;
+      if (state.batchOffset >= state.fullModePool.length) state.batchOffset = 0;
+      state.currentBatchPool = state.fullModePool.slice(state.batchOffset, state.batchOffset + state.batchSize);
+      state.currentIndex = 0;
+      renderCurrentItem();
+      batchTranslateItems(state.currentBatchPool);
+      showToast('✨ 已切换到下一批新词条');
+    }
+
+    function updatePoolHeaderLabel() {
+      const modeNames = {
+        word: '词汇库',
+        common_word: '高频常用单词',
+        grammar: '考级语法库',
+        common_grammar: '高频常用语法',
+        mistakes: '错题特训库'
+      };
+      const title = state.mode === 'mistakes'
+        ? `错题本 (共 ${state.mistakes.length} 条)`
+        : `JLPT ${state.level} ${modeNames[state.mode]} (共 ${state.fullModePool.length} 条)`;
+      document.getElementById('poolTitleLabel').textContent = title;
+    }
+
+    // =========================================================================
+    // 6. 假名分词与练习卡片渲染（单词与语法统一交互）
+    // =========================================================================
+    function tokenizeKana(kanaStr) {
+      const tokens = [];
+      let i = 0;
+      while (i < kanaStr.length) {
+        const ch = kanaStr[i];
+        const next = kanaStr[i + 1];
+
+        if (ch === 'っ' && next && ROMAJI_MAP[next]) {
+          let nextChunk = next;
+          if (kanaStr[i + 2] && SMALL_Y.has(kanaStr[i + 2])) nextChunk += kanaStr[i + 2];
+          const nextRomajis = ROMAJI_MAP[nextChunk] || ROMAJI_MAP[next] || [];
+          const doubleConsonants = nextRomajis.map(r => r[0]).filter(c => c && !'aeiou'.includes(c));
+          tokens.push({
+            kana: 'っ',
+            validRomajis: [...new Set([...doubleConsonants, 'ltu', 'xtu', 'ltsu'])]
+          });
+          i += 1;
+          continue;
+        }
+
+        if (next && SMALL_Y.has(next) && ROMAJI_MAP[ch + next]) {
+          tokens.push({ kana: ch + next, validRomajis: ROMAJI_MAP[ch + next] });
+          i += 2;
+          continue;
+        }
+
+        tokens.push({ kana: ch, validRomajis: ROMAJI_MAP[ch] || [ch] });
+        i += 1;
+      }
+      return tokens;
+    }
+
+    function renderCurrentItem() {
+      if (!state.currentBatchPool || state.currentBatchPool.length === 0) return;
+      if (state.currentIndex >= state.currentBatchPool.length) {
+        state.currentIndex = 0;
+        showToast('🎉 本批 20 条已完成！可点击「换一批」继续练习新词');
+      }
+
+      const item = state.currentBatchPool[state.currentIndex];
+      state.kanaTokens = tokenizeKana(item.kana);
+      state.tokenIndex = 0;
+      state.romajiBuffer = '';
+
+      // 顶部进度更新
+      document.getElementById('batchProgressLabel').textContent = `${state.currentIndex + 1} / ${state.currentBatchPool.length}`;
+      const pct = Math.round(((state.currentIndex + 1) / state.currentBatchPool.length) * 100);
+      document.getElementById('progressBarFill').style.width = `${pct}%`;
+
+      // 卡片徽章
+      document.getElementById('cardLevelBadge').textContent = state.mode === 'mistakes' ? '错题' : state.level;
+      document.getElementById('cardPosBadge').textContent = item.pos || (state.mode.includes('grammar') ? '语法' : '词汇');
+
+      // 主显示词条（无论是单词还是语法，都直接展示词条本身）
+      document.getElementById('mainDisplay').textContent = item.kanji;
+
+      // 中文意思展示 + 即时在线翻译触发
+      const meaningEl = document.getElementById('meaningDisplay');
+      meaningEl.textContent = item.meaning;
+      if (item.rawEn && !/[\u4e00-\u9fa5]/.test(item.meaning)) {
+        meaningEl.innerHTML = `<span class="text-slate-400 text-base">翻译中...</span> <span class="text-amber-300/80 text-lg">${item.meaning}</span>`;
+        translateEnglishToChinese(item.rawEn).then(cn => {
+          item.meaning = cn;
+          localStorage.setItem('kanatype_remote_v4', JSON.stringify(state.remoteWords));
+          if (state.currentBatchPool[state.currentIndex] === item) {
+            meaningEl.textContent = cn;
+          }
+        });
+      }
+
+      // 副提示：语法显示接续规则，单词显示罗马音参考
+      const subHintEl = document.getElementById('subHintDisplay');
+      if (item.rule) {
+        subHintEl.textContent = item.rule;
+        subHintEl.className = 'text-xs sm:text-sm text-indigo-300 font-medium mb-3';
+      } else {
+        const sampleRomaji = state.kanaTokens.map(t => t.validRomajis[0]).join('');
+        subHintEl.textContent = state.blindMode ? '盲打提示已隐藏 (按 Ctrl+H 恢复)' : `Romaji参考: ${sampleRomaji}`;
+        subHintEl.className = 'text-xs text-slate-400 mb-3';
+      }
+
+      // 例句渲染
+      document.getElementById('exampleJpText').textContent = item.example || '';
+      document.getElementById('exampleCnText').textContent = item.exampleCn || '';
+
+      renderKanaTokens();
+      updateRomajiDisplay();
+
+      if (state.autoSpeak) {
+        speakCurrentItem();
+      }
+    }
+
+    function renderKanaTokens() {
+      const container = document.getElementById('kanaDisplay');
+      container.innerHTML = '';
+
+      state.kanaTokens.forEach((token, idx) => {
+        const span = document.createElement('span');
+        span.textContent = token.kana;
+        span.className = 'px-2 py-0.5 rounded-lg transition-all duration-150 ';
+
+        if (idx < state.tokenIndex) {
+          span.className += 'text-emerald-400 bg-emerald-500/10';
+        } else if (idx === state.tokenIndex) {
+          span.className += state.blindMode
+            ? 'text-transparent bg-indigo-500/30 border-b-2 border-indigo-400 select-none'
+            : 'text-white bg-indigo-600 border-b-2 border-indigo-300 scale-105 shadow';
+        } else {
+          span.className += state.blindMode
+            ? 'text-transparent bg-slate-800/80 select-none'
+            : 'text-slate-500';
+        }
+        container.appendChild(span);
+      });
+    }
+
+    function updateRomajiDisplay() {
+      document.getElementById('romajiBufferDisplay').textContent = state.romajiBuffer;
+    }
+
+    // =========================================================================
+    // 7. 打字输入判定核心逻辑
+    // =========================================================================
+    function handleKeyInput(char) {
+      if (state.mainView !== 'practice') return;
+      if (!state.startTime) state.startTime = Date.now();
+      const currentToken = state.kanaTokens[state.tokenIndex];
+      if (!currentToken) return;
+
+      const candidate = (state.romajiBuffer + char).toLowerCase();
+      state.totalKeystrokes++;
+
+      // 拨音「ん」智能自动确认
+      if (currentToken.kana === 'ん' && state.romajiBuffer === 'n' && char !== 'n' && !'aeiouy\''.includes(char)) {
+        const nextToken = state.kanaTokens[state.tokenIndex + 1];
+        if (nextToken && nextToken.validRomajis.some(r => r.startsWith(char))) {
+          state.correctKeystrokes++;
+          advanceToken();
+          handleKeyInput(char);
+          return;
+        }
+      }
+
+      const exactMatch = currentToken.validRomajis.includes(candidate);
+      const prefixMatch = currentToken.validRomajis.some(r => r.startsWith(candidate));
+
+      if (exactMatch) {
+        if (currentToken.kana === 'ん' && candidate === 'n') {
+          const nextToken = state.kanaTokens[state.tokenIndex + 1];
+          const nextStartsWithVowelOrN = nextToken && nextToken.validRomajis.some(r => 'aeiouyn'.includes(r[0]));
+          if (!nextToken || nextStartsWithVowelOrN) {
+            state.romajiBuffer = candidate;
+            state.correctKeystrokes++;
+            updateRomajiDisplay();
+            updateStats();
+            return;
+          }
+        }
+        state.correctKeystrokes++;
+        state.romajiBuffer = '';
+        advanceToken();
+      } else if (prefixMatch) {
+        state.correctKeystrokes++;
+        state.romajiBuffer = candidate;
+        updateRomajiDisplay();
+      } else {
+        triggerErrorFeedback();
+      }
+      updateStats();
+    }
+
+    function advanceToken() {
+      state.tokenIndex++;
+      renderKanaTokens();
+      updateRomajiDisplay();
+
+      if (state.tokenIndex >= state.kanaTokens.length) {
+        state.streak++;
+        updateStats();
+        const card = document.getElementById('practiceCard');
+        card.classList.add('border-emerald-500/60');
+        setTimeout(() => {
+          card.classList.remove('border-emerald-500/60');
+          state.currentIndex++;
+          renderCurrentItem();
+        }, 220);
+      }
+    }
+
+    function triggerErrorFeedback() {
+      state.streak = 0;
+      const box = document.getElementById('kanaTargetContainer');
+      box.classList.remove('animate-shake');
+      void box.offsetWidth;
+      box.classList.add('animate-shake', 'border-rose-500/70');
+      setTimeout(() => box.classList.remove('border-rose-500/70'), 300);
+
+      const item = state.currentBatchPool[state.currentIndex];
+      if (item && !state.mistakes.some(m => m.kanji === item.kanji && m.kana === item.kana)) {
+        state.mistakes.push(item);
+        localStorage.setItem('kanatype_mistakes_v4', JSON.stringify(state.mistakes));
+        updateMistakeBadge();
+      }
+    }
+
+    function updateStats() {
+      const elapsedMin = state.startTime ? (Date.now() - state.startTime) / 60000 : 0;
+      const kpm = elapsedMin > 0.02 ? Math.round(state.correctKeystrokes / elapsedMin) : 0;
+      const acc = state.totalKeystrokes > 0 ? Math.round((state.correctKeystrokes / state.totalKeystrokes) * 100) : 100;
+
+      document.getElementById('statKpm').textContent = kpm;
+      document.getElementById('statAcc').textContent = `${acc}%`;
+      document.getElementById('statStreak').textContent = state.streak;
+    }
+
+    function updateMistakeBadge() {
+      document.getElementById('mistakeBadge').textContent = state.mistakes.length;
+    }
+
+    // =========================================================================
+    // 8. 词库与语法全量浏览器
+    // =========================================================================
+    function switchMainView(view) {
+      state.mainView = view;
+      const pView = document.getElementById('view-practice');
+      const bView = document.getElementById('view-browse');
+      const pNav = document.getElementById('nav-practice');
+      const bNav = document.getElementById('nav-browse');
+
+      if (view === 'practice') {
+        pView.classList.remove('hidden');
+        bView.classList.add('hidden');
+        pNav.className = 'px-4 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow';
+        bNav.className = 'px-4 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-300 hover:text-white flex items-center gap-1.5';
+        hiddenInput.focus();
+      } else {
+        pView.classList.add('hidden');
+        bView.classList.remove('hidden');
+        bNav.className = 'px-4 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow flex items-center gap-1.5';
+        pNav.className = 'px-4 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-300 hover:text-white';
+        state.browsePage = 1;
+        renderBrowseList();
+      }
+    }
+
+    function toggleBrowseMask(type) {
+      if (type === 'kana') {
+        state.browseMaskKana = !state.browseMaskKana;
+        document.getElementById('maskKanaBtn').classList.toggle('bg-indigo-600', state.browseMaskKana);
+        document.getElementById('maskKanaBtn').classList.toggle('text-white', state.browseMaskKana);
+      } else {
+        state.browseMaskMeaning = !state.browseMaskMeaning;
+        document.getElementById('maskMeaningBtn').classList.toggle('bg-indigo-600', state.browseMaskMeaning);
+        document.getElementById('maskMeaningBtn').classList.toggle('text-white', state.browseMaskMeaning);
+      }
+      renderBrowseList();
+    }
+
+    function renderBrowseList() {
+      const container = document.getElementById('browseListContainer');
+      const keyword = (document.getElementById('browseSearchInput').value || '').trim().toLowerCase();
+      const allItems = getItemsByLevelAndMode(state.level, state.mode);
+
+      const filtered = keyword
+        ? allItems.filter(it =>
+            (it.kanji && it.kanji.toLowerCase().includes(keyword)) ||
+            (it.kana && it.kana.includes(keyword)) ||
+            (it.meaning && it.meaning.toLowerCase().includes(keyword))
+          )
+        : allItems;
+
+      document.getElementById('browseCountBadge').textContent = `当前筛选共 ${filtered.length} 条`;
+
+      const pageSize = 40;
+      const visibleItems = filtered.slice(0, state.browsePage * pageSize);
+
+      // 触发浏览页可见词条的中文翻译
+      batchTranslateItems(visibleItems);
+
+      container.innerHTML = visibleItems.map((item, idx) => {
+        const kanaClass = state.browseMaskKana ? 'blur-sm hover:blur-none transition cursor-pointer' : '';
+        const meaningClass = state.browseMaskMeaning ? 'blur-sm hover:blur-none transition cursor-pointer' : '';
+        const ruleHtml = item.rule ? `<div class="text-xs text-indigo-300 mt-1">${item.rule}</div>` : '';
+        const exampleHtml = item.example
+          ? `<div class="mt-2 pt-2 border-t border-slate-800/80 text-xs text-slate-400">
+               <p class="jp-font text-slate-300">${item.example}</p>
+               <p class="mt-0.5">${item.exampleCn || ''}</p>
+             </div>`
+          : '';
+
+        return `
+          <div class="bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-xl p-4 flex flex-col justify-between transition">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <span class="jp-font text-xl font-bold text-white">${item.kanji}</span>
+                  <span class="jp-font text-sm text-indigo-400 ml-2 ${kanaClass}">${item.kana}</span>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button onclick="speakText('${item.kana}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300" title="朗读">🔊</button>
+                  <button onclick="practiceSpecificItem(${idx}, '${keyword.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded bg-indigo-600/80 hover:bg-indigo-600 text-xs text-white font-medium">⌨️ 练习</button>
+                </div>
+              </div>
+              <div class="text-sm font-semibold text-amber-300 mt-1.5 ${meaningClass}">${item.meaning}</div>
+              ${ruleHtml}
+            </div>
+            ${exampleHtml}
+          </div>
+        `;
+      }).join('');
+
+      const loadMoreBtn = document.getElementById('loadMoreBtn');
+      loadMoreBtn.classList.toggle('hidden', visibleItems.length >= filtered.length);
+    }
+
+    function loadMoreBrowseItems() {
+      state.browsePage++;
+      renderBrowseList();
+    }
+
+    function practiceSpecificItem(filteredIndex, keyword) {
+      const allItems = getItemsByLevelAndMode(state.level, state.mode);
+      const filtered = keyword
+        ? allItems.filter(it =>
+            (it.kanji && it.kanji.toLowerCase().includes(keyword)) ||
+            (it.kana && it.kana.includes(keyword)) ||
+            (it.meaning && it.meaning.toLowerCase().includes(keyword))
+          )
+        : allItems;
+      const target = filtered[filteredIndex];
+      if (!target) return;
+
+      const realIdx = allItems.findIndex(it => it.kanji === target.kanji && it.kana === target.kana);
+      const batchStart = Math.max(0, Math.floor(realIdx / state.batchSize) * state.batchSize);
+      state.batchOffset = batchStart;
+      state.currentBatchPool = allItems.slice(batchStart, batchStart + state.batchSize);
+      state.currentIndex = Math.max(0, realIdx - batchStart);
+      switchMainView('practice');
+      renderCurrentItem();
+    }
+
+    // =========================================================================
+    // 9. 语音朗读与交互控制
+    // =========================================================================
+    function speakText(text) {
+      if (!('speechSynthesis' in window) || !text) return;
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'ja-JP';
+      utter.rate = parseFloat(document.getElementById('speechRateSelect').value || '1.0');
+      window.speechSynthesis.speak(utter);
+    }
+
+    function speakCurrentItem() {
+      const item = state.currentBatchPool[state.currentIndex];
+      if (!item) return;
+      speakText(item.kana || item.kanji);
+    }
+
+    function speakExample() {
+      const item = state.currentBatchPool[state.currentIndex];
+      if (!item || !item.example) return;
+      speakText(item.example);
+    }
+
+    function skipCurrentItem() {
+      state.currentIndex++;
+      renderCurrentItem();
+      hiddenInput.focus();
+    }
+
+    function toggleBlindMode() {
+      state.blindMode = !state.blindMode;
+      const btn = document.getElementById('blindModeBtn');
+      const label = document.getElementById('blindLabel');
+      if (state.blindMode) {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white border border-indigo-500 transition flex items-center gap-1.5';
+        label.textContent = '盲打中';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700/60 transition flex items-center gap-1.5';
+        label.textContent = '提示开';
+      }
+      renderCurrentItem();
+    }
+
+    function importBulkText() {
+      const text = document.getElementById('bulkImportText').value.trim();
+      const level = document.getElementById('bulkTargetLevel').value;
+      const mode = document.getElementById('bulkTargetMode').value;
+      if (!text) return;
+
+      const lines = text.split('\n');
+      const customKey = `${level}_${mode}`;
+      if (!state.customData[customKey]) state.customData[customKey] = [];
+      let count = 0;
+
+      lines.forEach(line => {
+        const parts = line.split('|').map(s => s.trim());
+        if (parts.length >= 3 && parts[0] && parts[1]) {
+          state.customData[customKey].push({
+            kanji: parts[0],
+            kana: cleanKana(parts[1]),
+            pos: mode.includes('grammar') ? '自定义语法' : '自定义词汇',
+            meaning: parts[2],
+            example: parts[3] || '',
+            exampleCn: parts[4] || ''
+          });
+          count++;
+        }
+      });
+
+      if (count > 0) {
+        localStorage.setItem('kanatype_custom_v4', JSON.stringify(state.customData));
+        document.getElementById('bulkImportText').value = '';
+        closeModal('cloudModal');
+        state.level = level;
+        state.mode = mode;
+        syncNavButtonsUI();
+        loadModePool(true);
+        updateTotalBadge();
+        showToast(`✅ 成功导入 ${count} 条自定义内容！`);
+      }
+    }
+
+    function syncNavButtonsUI() {
+      document.querySelectorAll('.level-btn').forEach(b => {
+        const active = b.dataset.level === state.level;
+        b.className = active
+          ? 'level-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow'
+          : 'level-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200';
+      });
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        const active = b.dataset.mode === state.mode;
+        if (b.dataset.mode === 'mistakes') {
+          b.className = active
+            ? 'mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-rose-600 text-white shadow flex items-center gap-1'
+            : 'mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-rose-400 hover:text-rose-300 flex items-center gap-1';
+        } else {
+          b.className = active
+            ? 'mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-slate-700 text-white shadow'
+            : 'mode-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200';
+        }
+      });
+    }
+
+    function openModal(id) {
+      const m = document.getElementById(id);
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.remove('opacity-0');
+      setTimeout(() => t.classList.add('opacity-0'), 2600);
+    }
+
+    // =========================================================================
+    // 10. 事件绑定与启动
+    // =========================================================================
+    document.querySelectorAll('.level-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.level = btn.dataset.level;
+        syncNavButtonsUI();
+        loadModePool(true);
+        if (state.mainView === 'browse') {
+          state.browsePage = 1;
+          renderBrowseList();
+        }
+        hiddenInput.focus();
+      });
+    });
+
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.mode = btn.dataset.mode;
+        syncNavButtonsUI();
+        loadModePool(true);
+        if (state.mainView === 'browse') {
+          state.browsePage = 1;
+          renderBrowseList();
+        }
+        hiddenInput.focus();
+      });
+    });
+
+    document.getElementById('blindModeBtn').addEventListener('click', () => {
+      toggleBlindMode();
+      hiddenInput.focus();
+    });
+
+    document.getElementById('soundToggleBtn').addEventListener('click', () => {
+      state.autoSpeak = !state.autoSpeak;
+      document.getElementById('soundLabel').textContent = state.autoSpeak ? '发音开' : '已静音';
+      hiddenInput.focus();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (document.getElementById('cloudModal').classList.contains('flex')) return;
+      if (document.activeElement === document.getElementById('browseSearchInput')) return;
+
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        speakCurrentItem();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        toggleBlindMode();
+        return;
+      }
+      if (state.mainView === 'practice') {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          skipCurrentItem();
+          return;
+        }
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          if (state.romajiBuffer.length > 0) {
+            state.romajiBuffer = state.romajiBuffer.slice(0, -1);
+            updateRomajiDisplay();
+          }
+          return;
+        }
+        if (/^[a-zA-Z\-~']$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          handleKeyInput(e.key);
+        }
+      }
+    });
+
+    hiddenInput.addEventListener('input', (e) => {
+      const val = e.target.value;
+      e.target.value = '';
+      if (val) {
+        for (const ch of val) {
+          if (/^[a-zA-Z\-~']$/.test(ch)) handleKeyInput(ch);
+        }
+      }
+    });
+
+    // 启动初始化
+    updateTotalBadge();
+    loadModePool(true);
+    initRemoteVocab();
+  </script>
+</body>
+</html>
