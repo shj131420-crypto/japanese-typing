@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KanaType JLPT - 日语单词与语法打字练习</title>
+    <title>KanaType JLPT - 日语全量词库浏览与打字练习</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Google Fonts: Inter & Noto Sans JP -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- 配置 Tailwind 自定义颜色与字体 -->
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -49,22 +48,15 @@
         }
     </script>
     <style>
-        /* 自定义滚动条与基础样式 */
         body {
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
             background-color: #090d16;
             color: #f1f5f9;
             overflow-x: hidden;
-            user-select: none;
         }
         .jp-text {
             font-family: 'Noto Sans JP', sans-serif;
         }
-        /* 键盘按键微光效果 */
-        .kbd-key {
-            box-shadow: 0 2px 0 0 rgba(255, 255, 255, 0.15);
-        }
-        /* 光标闪烁动画 */
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
@@ -72,16 +64,25 @@
         .cursor-blink {
             animation: blink 1s infinite;
         }
+        /* 遮罩模糊效果（用于背词自测） */
+        .mask-blur {
+            filter: blur(6px);
+            user-select: none;
+            transition: filter 0.2s ease;
+        }
+        .mask-blur:hover {
+            filter: blur(0px);
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
 
-    <!-- 顶部通知 Toast 容器 (替代 alert) -->
-    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <!-- 顶部通知 Toast 容器 -->
+    <div id="toast-container" class="fixed top-16 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- 顶部控制导航栏 -->
-    <header class="w-full border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <!-- 顶部导航栏：品牌 + 双主视图切换 + 联网词库状态 -->
+    <header class="w-full border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
             <!-- Brand Logo -->
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 font-jp font-bold text-lg text-white">
@@ -89,78 +90,99 @@
                 </div>
                 <div>
                     <h1 class="font-bold text-base sm:text-lg tracking-tight text-white flex items-center gap-2">
-                        KanaType <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">JLPT</span>
+                        KanaType <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">JLPT N1-N5</span>
                     </h1>
-                    <p class="text-[11px] text-slate-400 hidden sm:block">智能罗马音盲打 · 单词与语法双修</p>
+                    <!-- 联网同步状态指示条 -->
+                    <div id="cloud-status-bar" class="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <span id="cloud-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span id="cloud-status-text">正在初始化联网词库...</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- JLPT 等级选择器 (N5 - N1) -->
-            <div class="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800" id="level-selector">
-                <button data-level="N5" class="level-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow">N5</button>
-                <button data-level="N4" class="level-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition-all">N4</button>
-                <button data-level="N3" class="level-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition-all">N3</button>
-                <button data-level="N2" class="level-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition-all">N2</button>
-                <button data-level="N1" class="level-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition-all">N1</button>
-            </div>
-
-            <!-- 练习模式切换 (单词 / 语法 / 错题本) -->
-            <div class="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
-                <button id="mode-word" class="mode-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-slate-800 text-indigo-300 border border-slate-700">
-                    单词模式
+            <!-- 双核心主视图切换：【打字练习】 vs 【词库与语法浏览】 -->
+            <div class="flex items-center bg-slate-950/90 p-1 rounded-xl border border-slate-800 shadow-inner">
+                <button id="nav-typing-view" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    <span>打字练习</span>
                 </button>
-                <button id="mode-grammar" class="mode-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition-all">
-                    语法填空
-                </button>
-                <button id="mode-mistake" class="mode-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-rose-300 transition-all flex items-center gap-1">
-                    <span>错题本</span>
-                    <span id="mistake-badge" class="px-1.5 py-0.2 text-[10px] rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">0</span>
+                <button id="nav-browse-view" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    <span>词库与语法浏览</span>
+                    <span id="total-vocab-badge" class="px-1.5 py-0.2 text-[10px] rounded-full bg-slate-800 text-indigo-300 border border-slate-700 font-mono">0</span>
                 </button>
             </div>
 
-            <!-- 实用功能开关区 -->
+            <!-- 右侧快捷工具：发音开关 + 联网刷新/导入 -->
             <div class="flex items-center gap-2">
-                <!-- 盲打模式开关 -->
-                <button id="toggle-blind" title="隐藏平假名提示 (Ctrl + H)" class="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 text-slate-300 transition-all flex items-center gap-1.5 text-xs">
-                    <svg id="eye-open-icon" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                    <svg id="eye-closed-icon" class="w-4 h-4 text-amber-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
-                    <span class="hidden md:inline" id="blind-label">提示开</span>
-                </button>
-
-                <!-- 自动发音开关 -->
                 <button id="toggle-tts" title="开启/关闭自动日语朗读" class="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 text-slate-300 transition-all flex items-center gap-1.5 text-xs">
                     <svg id="tts-on-icon" class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
                     <svg id="tts-off-icon" class="w-4 h-4 text-slate-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
                     <span class="hidden md:inline" id="tts-label">发音开</span>
                 </button>
 
-                <!-- 联网词库导入按钮 -->
-                <button id="open-import-modal" title="联网加载远程词库或自定义导入" class="p-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 transition-all flex items-center gap-1.5 text-xs font-medium">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                <button id="open-import-modal" title="联网同步与自定义词库导入" class="p-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 transition-all flex items-center gap-1.5 text-xs font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     <span class="hidden sm:inline">云端词库</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- 主练习区 -->
-    <main class="flex-1 flex flex-col items-center justify-center px-4 py-6 max-w-4xl mx-auto w-full relative">
+    <!-- =====================================================================
+         视图 A：打字练习主界面
+         ===================================================================== -->
+    <section id="view-typing" class="flex-1 flex flex-col items-center justify-center px-4 py-5 max-w-4xl mx-auto w-full relative">
         
+        <!-- 练习模式与等级过滤工具条 -->
+        <div class="w-full max-w-2xl flex flex-wrap items-center justify-between gap-2 mb-5">
+            <!-- JLPT 等级选择器 -->
+            <div class="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800" id="level-selector">
+                <button data-level="N5" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow">N5</button>
+                <button data-level="N4" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all">N4</button>
+                <button data-level="N3" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all">N3</button>
+                <button data-level="N2" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all">N2</button>
+                <button data-level="N1" class="level-btn px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all">N1</button>
+            </div>
+
+            <!-- 练习模式：单词 / 语法 / 错题本 -->
+            <div class="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+                <button id="mode-word" class="mode-btn px-3 py-1 rounded-lg text-xs font-medium transition-all bg-slate-800 text-indigo-300 border border-slate-700">
+                    单词模式
+                </button>
+                <button id="mode-grammar" class="mode-btn px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+                    语法填空
+                </button>
+                <button id="mode-mistake" class="mode-btn px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-300 transition-all flex items-center gap-1">
+                    <span>错题本</span>
+                    <span id="mistake-badge" class="px-1.5 py-0.2 text-[10px] rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">0</span>
+                </button>
+            </div>
+
+            <!-- 盲打模式开关 -->
+            <button id="toggle-blind" title="隐藏平假名提示 (Ctrl + H)" class="px-3 py-1.5 rounded-xl bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 text-slate-300 transition-all flex items-center gap-1.5 text-xs">
+                <svg id="eye-open-icon" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                <svg id="eye-closed-icon" class="w-4 h-4 text-amber-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                <span id="blind-label">提示开</span>
+            </button>
+        </div>
+
         <!-- 顶部进度条与本轮进度 -->
-        <div class="w-full max-w-2xl mb-6">
+        <div class="w-full max-w-2xl mb-5">
             <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
                 <div class="flex items-center gap-2">
                     <span id="current-deck-title" class="font-semibold text-slate-200">JLPT N5 核心词汇</span>
                     <span class="text-slate-600">|</span>
-                    <span id="progress-text">1 / 10</span>
+                    <span id="progress-text">1 / 20</span>
+                    <button id="reshuffle-round-btn" title="从当前级别词库中重新随机抽取一组" class="ml-1 text-indigo-400 hover:text-indigo-300 underline text-[11px]">换一批</button>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <label class="flex items-center gap-1 cursor-pointer text-slate-400 hover:text-slate-200">
                         <span>语速:</span>
                         <select id="tts-rate" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-slate-200 focus:outline-none">
-                            <option value="0.75">0.75x 慢速</option>
-                            <option value="1.0" selected>1.0x 标准</option>
-                            <option value="1.25">1.25x 较快</option>
+                            <option value="0.75">0.75x</option>
+                            <option value="1.0" selected>1.0x</option>
+                            <option value="1.25">1.25x</option>
                         </select>
                     </label>
                 </div>
@@ -173,12 +195,12 @@
         <!-- 核心打字卡片 -->
         <div id="typing-card" class="w-full max-w-2xl bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl shadow-black/50 backdrop-blur-xl relative transition-transform">
             
-            <!-- 卡片左上角标签：词性 / 等级 / 语法接续 -->
+            <!-- 卡片左上角标签 -->
             <div class="flex justify-between items-start mb-6">
                 <div class="flex flex-wrap items-center gap-2">
                     <span id="card-level-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">N5</span>
                     <span id="card-pos-badge" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">名词</span>
-                    <span id="card-mistake-tag" class="hidden px-2.5 py-1 rounded-lg text-xs font-medium bg-rose-500/20 text-rose-300 border border-rose-500/30">需强化记忆</span>
+                    <span id="card-mistake-tag" class="hidden px-2.5 py-1 rounded-lg text-xs font-medium bg-rose-500/20 text-rose-300 border border-rose-500/30">错题重点</span>
                 </div>
 
                 <!-- 主动发音按钮 -->
@@ -190,12 +212,11 @@
 
             <!-- 单词/语法主展示区域 -->
             <div class="text-center my-4 sm:my-6">
-                <!-- 单词模式：显示日文汉字；语法模式：显示带挖空的例句 -->
                 <div id="main-display" class="jp-text text-3xl sm:text-5xl font-bold text-white tracking-wide leading-snug mb-4 min-h-[3.5rem] flex items-center justify-center flex-wrap gap-1">
                     <!-- 动态填充 -->
                 </div>
 
-                <!-- 假名打字渲染区 (逐字状态高亮) -->
+                <!-- 假名打字渲染区 -->
                 <div id="kana-display-wrapper" class="my-4 py-3 px-4 rounded-2xl bg-slate-950/70 border border-slate-800/90 inline-block min-w-[220px] sm:min-w-[300px]">
                     <div id="kana-chars" class="jp-text text-2xl sm:text-3xl font-bold tracking-widest flex items-center justify-center flex-wrap gap-0.5 min-h-[2.5rem]">
                         <!-- 动态生成每个假名 span -->
@@ -213,18 +234,18 @@
                 <!-- 中文释义与语法接续解析 -->
                 <div class="mt-5 space-y-2">
                     <p id="meaning-display" class="text-lg sm:text-xl font-medium text-amber-300/95">
-                        <!-- 中文释义 -->
+                        <!-- 释义 -->
                     </p>
                     <p id="extra-info-display" class="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto leading-relaxed">
-                        <!-- 语法接续规则或单词例句补充 -->
+                        <!-- 接续/例句 -->
                     </p>
                 </div>
             </div>
 
-            <!-- 移动端虚拟输入框唤醒条 (确保手机平板也能直接调出键盘打字) -->
-            <div class="mt-6 flex flex-col items-center">
+            <!-- 移动端虚拟输入框唤醒条 -->
+            <div class="mt-5 flex flex-col items-center">
                 <input id="mobile-hidden-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-                    placeholder="点击此处或直接敲击键盘输入罗马音..."
+                    placeholder="点击此处或直接敲击英文键盘输入罗马音..."
                     class="w-full sm:w-80 text-center text-xs bg-slate-800/50 border border-slate-700/70 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none transition-all">
             </div>
 
@@ -233,7 +254,7 @@
                 <div class="flex flex-wrap items-center gap-3">
                     <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono">Tab</kbd> 朗读</span>
                     <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono">Ctrl+H</kbd> 盲打切换</span>
-                    <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono">Enter</kbd> 跳过当前</span>
+                    <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono">Enter</kbd> 跳过</span>
                 </div>
                 <button id="skip-btn" class="text-slate-400 hover:text-indigo-400 transition-colors flex items-center gap-1 font-medium">
                     <span>跳过此题</span>
@@ -241,36 +262,97 @@
                 </button>
             </div>
         </div>
+    </section>
 
-        <!-- 罗马音多拼写兼容小贴士 -->
-        <div class="mt-5 text-center text-xs text-slate-500 max-w-xl">
-            支持多拼写变体：如 <code class="text-slate-400">し (shi/si)</code>、<code class="text-slate-400">つ (tsu/tu)</code>、<code class="text-slate-400">ふ (fu/hu)</code>、促音 <code class="text-slate-400">っ (双写辅音)</code>、拨音 <code class="text-slate-400">ん (n/nn)</code>，无需切换系统输入法。
+    <!-- =====================================================================
+         视图 B：全量词库与语法浏览器 (默认隐藏)
+         ===================================================================== -->
+    <section id="view-browse" class="hidden flex-1 max-w-6xl mx-auto w-full px-4 py-6">
+        
+        <!-- 顶部筛选与搜索控制台 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-6 shadow-xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+                <!-- 等级过滤标签 -->
+                <div class="flex flex-wrap items-center gap-1.5" id="browse-level-filters">
+                    <button data-blevel="ALL" class="b-level-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white">全部等级</button>
+                    <button data-blevel="N5" class="b-level-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">N5</button>
+                    <button data-blevel="N4" class="b-level-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">N4</button>
+                    <button data-blevel="N3" class="b-level-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">N3</button>
+                    <button data-blevel="N2" class="b-level-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">N2</button>
+                    <button data-blevel="N1" class="b-level-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">N1</button>
+                </div>
+
+                <!-- 类型过滤：全部 / 单词 / 语法 / 仅错题 -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="browse-type-filter" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
+                        <option value="all">全部类型 (单词 + 语法)</option>
+                        <option value="word">仅看单词词库</option>
+                        <option value="grammar">仅看语法句型</option>
+                        <option value="mistake">仅看错题本</option>
+                    </select>
+
+                    <!-- 背词遮罩自测开关 -->
+                    <button id="browse-mask-meaning" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition-all">
+                        隐藏释义
+                    </button>
+                    <button id="browse-mask-kana" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition-all">
+                        隐藏读音
+                    </button>
+                </div>
+            </div>
+
+            <!-- 搜索框与结果统计 -->
+            <div class="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div class="relative flex-1">
+                    <svg class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input id="browse-search-input" type="text" placeholder="搜索日文汉字、假名读音或中文释义（例如：食べる、たべる、吃、からには）..."
+                        class="w-full bg-slate-950 border border-slate-700/90 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none">
+                </div>
+                <div class="flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-400">
+                    <span>共筛选出 <strong id="browse-count" class="text-indigo-400 font-mono">0</strong> 条记录</span>
+                    <button id="browse-practice-filtered" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-all whitespace-nowrap">
+                        练习当前筛选结果
+                    </button>
+                </div>
+            </div>
         </div>
-    </main>
+
+        <!-- 词条卡片列表容器 -->
+        <div id="browse-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <!-- 动态渲染词条卡片 -->
+        </div>
+
+        <!-- 分页加载控制区 -->
+        <div id="browse-pagination" class="mt-6 flex items-center justify-center gap-3">
+            <button id="browse-prev-page" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-xs font-medium text-slate-200 transition-all">上一页</button>
+            <span id="browse-page-info" class="text-xs font-mono text-slate-400">第 1 / 1 页</span>
+            <button id="browse-next-page" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-xs font-medium text-slate-200 transition-all">下一页</button>
+        </div>
+    </section>
 
     <!-- 底部实时统计仪表盘 -->
-    <footer class="w-full border-t border-slate-800/80 bg-slate-900/70 backdrop-blur-md">
-        <div class="max-w-5xl mx-auto px-4 py-3.5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2.5">
-                <div class="text-[11px] text-slate-400 uppercase tracking-wider">连击 Combo</div>
-                <div id="stat-combo" class="text-xl sm:text-2xl font-mono font-bold text-indigo-400 mt-0.5">0</div>
+    <footer class="w-full border-t border-slate-800/80 bg-slate-900/70 backdrop-blur-md mt-auto">
+        <div class="max-w-5xl mx-auto px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wider">连击 Combo</div>
+                <div id="stat-combo" class="text-lg sm:text-xl font-mono font-bold text-indigo-400">0</div>
             </div>
-            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2.5">
-                <div class="text-[11px] text-slate-400 uppercase tracking-wider">速度 WPM</div>
-                <div id="stat-wpm" class="text-xl sm:text-2xl font-mono font-bold text-emerald-400 mt-0.5">0</div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wider">速度 WPM</div>
+                <div id="stat-wpm" class="text-lg sm:text-xl font-mono font-bold text-emerald-400">0</div>
             </div>
-            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2.5">
-                <div class="text-[11px] text-slate-400 uppercase tracking-wider">准确率 Accuracy</div>
-                <div id="stat-acc" class="text-xl sm:text-2xl font-mono font-bold text-amber-400 mt-0.5">100%</div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wider">准确率 Accuracy</div>
+                <div id="stat-acc" class="text-lg sm:text-xl font-mono font-bold text-amber-400">100%</div>
             </div>
-            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2.5">
-                <div class="text-[11px] text-slate-400 uppercase tracking-wider">累计掌握词数</div>
-                <div id="stat-mastered" class="text-xl sm:text-2xl font-mono font-bold text-purple-400 mt-0.5">0</div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wider">累计掌握词数</div>
+                <div id="stat-mastered" class="text-lg sm:text-xl font-mono font-bold text-purple-400">0</div>
             </div>
         </div>
     </footer>
 
-    <!-- 弹窗 1：一轮完成战绩总结卡片 -->
+    <!-- 弹窗 1：本组训练完成战绩总结 -->
     <div id="summary-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
         <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl animate-pop text-center">
             <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 mb-4">
@@ -308,46 +390,58 @@
         </div>
     </div>
 
-    <!-- 弹窗 2：云端词库联网加载 / 自定义导入 -->
+    <!-- 弹窗 2：云端词库联网同步 & 自定义导入 -->
     <div id="import-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
         <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-pop">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
                     <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                    <span>云端词库联网加载 & 自定义导入</span>
+                    <span>云端词库联网管理 & 自定义导入</span>
                 </h3>
                 <button id="close-import-modal" class="text-slate-400 hover:text-white p-1 rounded-lg">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
-            <!-- 远程 JSON URL 加载 -->
-            <div class="mb-5">
-                <label class="block text-xs font-semibold text-slate-300 mb-1.5">1. 远程 JSON 词库直链加载 (联网扩展)</label>
-                <div class="flex gap-2">
-                    <input id="remote-url-input" type="url" placeholder="https://example.com/jlpt-n2-vocab.json" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
-                    <button id="fetch-remote-btn" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all whitespace-nowrap">
-                        联网拉取
+            <!-- 联网同步控制 -->
+            <div class="mb-4 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-slate-200">全量开源 JLPT N5-N1 词库联网引擎</span>
+                    <button id="force-cloud-sync-btn" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all">
+                        重新联网拉取全量库
                     </button>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-1">支持标准 JSON 数组格式，自动合并至当前等级词库并缓存到本地。</p>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    系统启动时会自动拉取同级目录 <code class="text-indigo-300">./data/words_n5.json ~ words_n1.json</code>（自定义中文词库）以及在线 JLPT 开源词库 API（约 8,000+ 词），并缓存至本地浏览器。
+                </p>
+            </div>
+
+            <!-- 远程 JSON URL 加载 -->
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">自定义远程 JSON 词库链接加载</label>
+                <div class="flex gap-2">
+                    <input id="remote-url-input" type="url" placeholder="https://example.com/my-jlpt-words.json" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
+                    <button id="fetch-remote-btn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-semibold transition-all whitespace-nowrap">
+                        拉取合并
+                    </button>
+                </div>
             </div>
 
             <!-- 自定义文本/JSON 粘贴导入 -->
             <div class="mb-5">
                 <div class="flex justify-between items-center mb-1.5">
-                    <label class="text-xs font-semibold text-slate-300">2. 快速粘贴自定义单词/语法列表</label>
+                    <label class="text-xs font-semibold text-slate-300">批量粘贴自定义单词/语法</label>
                     <button id="fill-sample-btn" class="text-[11px] text-indigo-400 hover:underline">填入示例格式</button>
                 </div>
-                <textarea id="custom-import-text" rows="5" placeholder='支持每行一条简写格式：&#10;桜 | さくら | 名词 | 樱花&#10;頑張る | がんばる | 动词 | 加油，努力&#10;或标准 JSON 格式' class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200 focus:border-indigo-500 focus:outline-none"></textarea>
+                <textarea id="custom-import-text" rows="4" placeholder='每行一条格式：&#10;桜 | さくら | 名词 | 樱花&#10;頑張る | がんばる | 动词 | 加油，努力' class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200 focus:border-indigo-500 focus:outline-none"></textarea>
             </div>
 
             <div class="flex justify-end gap-2">
                 <button id="reset-default-db" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-all mr-auto">
-                    恢复默认内置词库
+                    清除缓存并重置
                 </button>
                 <button id="import-custom-btn" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all">
-                    导入并开始练习
+                    导入词条
                 </button>
             </div>
         </div>
@@ -357,11 +451,10 @@
     <script>
         /**
          * ============================================================================
-         * 1. 智能日语假名 -> 多罗马音映射引擎 (支持平假名、片假名、拗音、促音、拨音、长音)
+         * 1. 智能日语假名 -> 多罗马音映射引擎
          * ============================================================================
          */
         const KANA_TO_ROMAJI = {
-            // 清音
             'あ': ['a'], 'い': ['i'], 'う': ['u', 'wu'], 'え': ['e'], 'お': ['o'],
             'か': ['ka', 'ca'], 'き': ['ki'], 'く': ['ku', 'cu', 'qu'], 'け': ['ke'], 'こ': ['ko', 'co'],
             'さ': ['sa'], 'し': ['shi', 'si', 'ci'], 'す': ['su'], 'せ': ['se', 'ce'], 'そ': ['so'],
@@ -372,17 +465,14 @@
             'や': ['ya'], 'ゆ': ['yu'], 'よ': ['yo'],
             'ら': ['ra'], 'り': ['ri'], 'る': ['ru'], 'れ': ['re'], 'ろ': ['ro'],
             'わ': ['wa'], 'を': ['wo', 'o'], 'ん': ['nn', 'n', "n'"],
-            // 浊音与半浊音
             'が': ['ga'], 'ぎ': ['gi'], 'ぐ': ['gu'], 'げ': ['ge'], 'ご': ['go'],
             'ざ': ['za'], 'じ': ['ji', 'zi'], 'ず': ['zu'], 'ぜ': ['ze'], 'ぞ': ['zo'],
             'だ': ['da'], 'ぢ': ['di', 'ji'], 'づ': ['du', 'zu'], 'で': ['de'], 'ど': ['do'],
             'ば': ['ba'], 'び': ['bi'], 'ぶ': ['bu'], 'べ': ['be'], 'ぼ': ['bo'],
             'ぱ': ['pa'], 'ぴ': ['pi'], 'ぷ': ['pu'], 'ぺ': ['pe'], 'ぽ': ['po'],
-            // 小假名 (单独出现时)
             'ぁ': ['la', 'xa'], 'ぃ': ['li', 'xi'], 'ぅ': ['lu', 'xu'], 'ぇ': ['le', 'xe'], 'ぉ': ['lo', 'xo'],
             'ゃ': ['lya', 'xya'], 'ゅ': ['lyu', 'xyu'], 'ょ': ['lyo', 'xyo'],
             'っ': ['ltu', 'xtu', 'ltsu', 'xtsu'],
-            // 拗音
             'きゃ': ['kya'], 'きゅ': ['kyu'], 'きょ': ['kyo'],
             'しゃ': ['sha', 'sya'], 'しゅ': ['shu', 'syu'], 'しょ': ['sho', 'syo'],
             'ちゃ': ['cha', 'tya', 'cya'], 'ちゅ': ['chu', 'tyu', 'cyu'], 'ちょ': ['cho', 'tyo', 'cyo'],
@@ -395,67 +485,49 @@
             'ぢゃ': ['dya'], 'ぢゅ': ['dyu'], 'ぢょ': ['dyo'],
             'びゃ': ['bya'], 'びゅ': ['byu'], 'びょ': ['byo'],
             'ぴゃ': ['pya'], 'ぴゅ': ['pyu'], 'ぴょ': ['pyo'],
-            // 外来语常见扩展组合
             'ふぁ': ['fa'], 'ふぃ': ['fi'], 'ふぇ': ['fe'], 'ふぉ': ['fo'],
             'てぃ': ['ti', 'thi'], 'でぃ': ['di', 'dhi'],
             'うぃ': ['wi'], 'うぇ': ['we'], 'うぉ': ['wo'],
             'ゔぁ': ['va'], 'ゔぃ': ['vi'], 'ゔ': ['vu'], 'ゔぇ': ['ve'], 'ゔぉ': ['vo'],
-            // 长音符号
             'ー': ['-']
         };
 
-        // 片假名转平假名工具函数（用于统一查表）
         function katakanaToHiragana(str) {
-            return str.replace(/[\u30a1-\u30f6]/g, match => {
-                const chr = match.charCodeAt(0) - 0x60;
-                return String.fromCharCode(chr);
-            });
+            return str.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60));
         }
 
-        /**
-         * 将日语假名字符串解析为【打字Token序列】
-         * 每个 Token 包含：{ display: 原假名字符, romajiOptions: 所有合法罗马音数组 }
-         * 自动处理：拗音合并（如 しゃ）、促音双写辅音（如 っ + か -> kka / ltu+ka）、拨音 ん 规则
-         */
         function tokenizeKana(kanaStr) {
             const tokens = [];
-            const hiraStr = katakanaToHiragana(kanaStr);
+            const cleanStr = (kanaStr || '').replace(/[\s・〜～\(\)（）]/g, '');
+            const hiraStr = katakanaToHiragana(cleanStr);
             let i = 0;
 
             while (i < hiraStr.length) {
                 const curr = hiraStr[i];
-                const origCurr = kanaStr[i];
+                const origCurr = cleanStr[i];
 
-                // 1. 处理促音「っ」
+                // 处理促音「っ」
                 if (curr === 'っ' && i + 1 < hiraStr.length) {
-                    // 查看紧随其后的假名（可能是单字或拗音）
                     let nextKana = hiraStr[i + 1];
-                    let nextOrig = kanaStr[i + 1];
+                    let nextOrig = cleanStr[i + 1];
                     let step = 2;
 
                     if (i + 2 < hiraStr.length && 'ゃゅょぁぃぅぇぉ'.includes(hiraStr[i + 2])) {
                         nextKana += hiraStr[i + 2];
-                        nextOrig += kanaStr[i + 2];
+                        nextOrig += cleanStr[i + 2];
                         step = 3;
                     }
 
                     const nextOptions = KANA_TO_ROMAJI[nextKana] || [nextKana];
                     const combinedOptions = [];
 
-                    // 双写辅音规则 (如 kitte, zasshi, matchi)
                     nextOptions.forEach(opt => {
                         const firstChar = opt[0];
                         if (firstChar && !'aeiouyn-'.includes(firstChar)) {
                             combinedOptions.push(firstChar + opt);
                         }
-                        // 特殊：chi 前面支持 tchi
-                        if (opt.startsWith('chi')) {
-                            combinedOptions.push('t' + opt);
-                        }
-                        // 也允许单独输入 ltu / xtu + 后续假名
-                        ['ltu', 'xtu'].forEach(tsuOpt => {
-                            combinedOptions.push(tsuOpt + opt);
-                        });
+                        if (opt.startsWith('chi')) combinedOptions.push('t' + opt);
+                        ['ltu', 'xtu'].forEach(tsuOpt => combinedOptions.push(tsuOpt + opt));
                     });
 
                     tokens.push({
@@ -466,10 +538,10 @@
                     continue;
                 }
 
-                // 2. 处理拗音及外来语双字符组合 (如 きゃ, しゅ, ふぁ, てぃ)
+                // 处理拗音及外来语组合
                 if (i + 1 < hiraStr.length && 'ゃゅょぁぃぅぇぉ'.includes(hiraStr[i + 1])) {
                     const pair = curr + hiraStr[i + 1];
-                    const origPair = origCurr + kanaStr[i + 1];
+                    const origPair = origCurr + cleanStr[i + 1];
                     if (KANA_TO_ROMAJI[pair]) {
                         tokens.push({
                             display: origPair,
@@ -480,11 +552,10 @@
                     }
                 }
 
-                // 3. 处理拨音「ん」
+                // 处理拨音「ん」
                 if (curr === 'ん') {
                     const nextChar = i + 1 < hiraStr.length ? hiraStr[i + 1] : '';
                     const nextOpts = nextChar ? (KANA_TO_ROMAJI[nextChar] || []) : [];
-                    // 如果后面跟着元音 (あいうえお)、や行 (やゆよ) 或 な行，单打 n 会与后面结合，必须打 nn 或 n'
                     const needsDoubleN = nextOpts.some(o => 'aiueoyn'.includes(o[0]));
                     tokens.push({
                         display: origCurr,
@@ -494,7 +565,6 @@
                     continue;
                 }
 
-                // 4. 普通单假名或长音「ー」
                 const opts = KANA_TO_ROMAJI[curr] || [curr];
                 tokens.push({
                     display: origCurr,
@@ -502,13 +572,12 @@
                 });
                 i += 1;
             }
-
             return tokens;
         }
 
         /**
          * ============================================================================
-         * 2. 内置高质量 JLPT N5-N1 单词与语法精选词库
+         * 2. 内置中文精选示范库 (作为秒开兜底数据，联网后会与全量库智能合并)
          * ============================================================================
          */
         const DEFAULT_DATA = {
@@ -568,219 +637,258 @@
             },
             grammar: {
                 N5: [
-                    {
-                        sentence: '毎日、図書館（　　　）本を読みます。',
-                        reading: 'で',
-                        target: 'で',
-                        pos: 'N5 助词',
-                        meaning: '每天在图书馆看书。（表示动作发生的场所）',
-                        extra: '接续：场所名词 + で + 动作动词'
-                    },
-                    {
-                        sentence: '日曜日は映画を見たり、買い物（　　　）します。',
-                        reading: 'したり',
-                        target: 'したり',
-                        pos: 'N5 句型',
-                        meaning: '周日看看电影啦、买买东西啦。（列举代表性动作）',
-                        extra: '接续：Vた + り、Vた + りする'
-                    },
-                    {
-                        sentence: 'ここに車を止めて（　　　　　）。',
-                        reading: 'はいけません',
-                        target: 'はいけません',
-                        pos: 'N5 句型',
-                        meaning: '不可以在这里停车。（表示禁止）',
-                        extra: '接续：Vて + はいけません'
-                    },
-                    {
-                        sentence: '日本へ行った（　　　　　）あります。',
-                        reading: 'ことが',
-                        target: 'ことが',
-                        pos: 'N5 句型',
-                        meaning: '我去过日本。（表示过去的经历）',
-                        extra: '接续：Vた + ことがある'
-                    }
+                    { sentence: '毎日、図書館（　　　）本を読みます。', reading: 'で', target: 'で', pos: 'N5 助词', meaning: '每天在图书馆看书。（表示动作发生的场所）', extra: '接续：场所名词 + で + 动作动词' },
+                    { sentence: '日曜日は映画を見たり、買い物（　　　）します。', reading: 'したり', target: 'したり', pos: 'N5 句型', meaning: '周日看看电影啦、买买东西啦。（列举代表性动作）', extra: '接续：Vた + り、Vた + りする' },
+                    { sentence: 'ここに車を止めて（　　　　　）。', reading: 'はいけません', target: 'はいけません', pos: 'N5 句型', meaning: '不可以在这里停车。（表示禁止）', extra: '接续：Vて + はいけません' },
+                    { sentence: '日本へ行った（　　　　　）あります。', reading: 'ことが', target: 'ことが', pos: 'N5 句型', meaning: '我去过日本。（表示过去的经历）', extra: '接续：Vた + ことがある' }
                 ],
                 N4: [
-                    {
-                        sentence: '雨が降っている（　　　）、出かけましょう。',
-                        reading: 'けれど',
-                        target: 'けれど',
-                        pos: 'N4 接续助词',
-                        meaning: '虽然下着雨，但还是出门吧。（表示转折）',
-                        extra: '接续：简体句 + けれど / けれども'
-                    },
-                    {
-                        sentence: '日本語が話せる（　　　　　　）、毎日練習します。',
-                        reading: 'ようになるために',
-                        target: 'ようになるために',
-                        pos: 'N4 复合表达',
-                        meaning: '为了变得能说日语，每天都在练习。',
-                        extra: '接续：V可能态 + ようになる + ために'
-                    },
-                    {
-                        sentence: '明日は試験があるので、早く寝た（　　　　　）いいです。',
-                        reading: 'ほうが',
-                        target: 'ほうが',
-                        pos: 'N4 建议句型',
-                        meaning: '明天有考试，早点睡比较好。',
-                        extra: '接续：Vた + ほうがいい（建议做某事）'
-                    },
-                    {
-                        sentence: '窓が開けて（　　　　）。',
-                        reading: 'あります',
-                        target: 'あります',
-                        pos: 'N4 存续体',
-                        meaning: '窗户开着。（人为动作后的状态存续）',
-                        extra: '接续：他动词て形 + ある'
-                    }
+                    { sentence: '雨が降っている（　　　）、出かけましょう。', reading: 'けれど', target: 'けれど', pos: 'N4 接续助词', meaning: '虽然下着雨，但还是出门吧。（表示转折）', extra: '接续：简体句 + けれど / けれども' },
+                    { sentence: '日本語が話せる（　　　　　　）、毎日練習します。', reading: 'ようになるために', target: 'ようになるために', pos: 'N4 复合表达', meaning: '为了变得能说日语，每天都在练习。', extra: '接续：V可能态 + ようになる + ために' },
+                    { sentence: '明日は試験があるので、早く寝た（　　　　　）いいです。', reading: 'ほうが', target: 'ほうが', pos: 'N4 建议句型', meaning: '明天有考试，早点睡比较好。', extra: '接续：Vた + ほうがいい（建议做某事）' },
+                    { sentence: '窓が開けて（　　　　）。', reading: 'あります', target: 'あります', pos: 'N4 存续体', meaning: '窗户开着。（人为动作后的状态存续）', extra: '接续：他动词て形 + ある' }
                 ],
                 N3: [
-                    {
-                        sentence: '日本に来た（　　　　）、まだ何も分かりません。',
-                        reading: 'ばかりなので',
-                        target: 'ばかりなので',
-                        pos: 'N3 核心语法',
-                        meaning: '因为刚来日本，还什么都不懂。',
-                        extra: '接续：Vた + ばかりだ（刚刚……）'
-                    },
-                    {
-                        sentence: '天気予報（　　　　）、午後は雨が降るそうだ。',
-                        reading: 'によると',
-                        target: 'によると',
-                        pos: 'N3 传闻依据',
-                        meaning: '根据天气预报，听说下午会下雨。',
-                        extra: '接续：N + によると / によれば'
-                    },
-                    {
-                        sentence: '忙しい（　　　　　　）、連絡くらいはできるはずだ。',
-                        reading: 'にもかかわらず',
-                        target: 'にもかかわらず',
-                        pos: 'N3 逆接语法',
-                        meaning: '尽管很忙，但至少联系一下还是能做到的。',
-                        extra: '接续：V/A简体・N/Naである + にもかかわらず'
-                    },
-                    {
-                        sentence: '彼の話を聞く（　　　　）、涙が出てきた。',
-                        reading: 'うちに',
-                        target: 'うちに',
-                        pos: 'N3 时间变化',
-                        meaning: '听着他的话，眼泪不知不觉流了出来。',
-                        extra: '接续：Vる/Vている + うちに（在……的过程中发生了变化）'
-                    }
+                    { sentence: '日本に来た（　　　　）、まだ何も分かりません。', reading: 'ばかりなので', target: 'ばかりなので', pos: 'N3 核心语法', meaning: '因为刚来日本，还什么都不懂。', extra: '接续：Vた + ばかりだ（刚刚……）' },
+                    { sentence: '天気予報（　　　　）、午後は雨が降るそうだ。', reading: 'によると', target: 'によると', pos: 'N3 传闻依据', meaning: '根据天气预报，听说下午会下雨。', extra: '接续：N + によると / によれば' },
+                    { sentence: '忙しい（　　　　　　）、連絡くらいはできるはずだ。', reading: 'にもかかわらず', target: 'にもかかわらず', pos: 'N3 逆接语法', meaning: '尽管很忙，但至少联系一下还是能做到的。', extra: '接续：V/A简体・N/Naである + にもかかわらず' },
+                    { sentence: '彼の話を聞く（　　　　）、涙が出てきた。', reading: 'うちに', target: 'うちに', pos: 'N3 时间变化', meaning: '听着他的话，眼泪不知不觉流了出来。', extra: '接续：Vる/Vている + うちに（在……的过程中发生了变化）' }
                 ],
                 N2: [
-                    {
-                        sentence: '約束した（　　　　　）、必ず守らなければならない。',
-                        reading: 'からには',
-                        target: 'からには',
-                        pos: 'N2 核心语法',
-                        meaning: '既然约好了，就必须遵守。',
-                        extra: '接续：Vる/Vた・Nである + からには（既然……就……）'
-                    },
-                    {
-                        sentence: 'この問題については、現在調査（　　　　　　）です。',
-                        reading: 'しつつあるところ',
-                        target: 'しつつあるところ',
-                        pos: 'N2 书面语法',
-                        meaning: '关于这个问题，目前正在逐步调查之中。',
-                        extra: '接续：Vます形 + つつある（正在不断……）'
-                    },
-                    {
-                        sentence: '年齢（　　　　　　）、誰でも参加できます。',
-                        reading: 'にかかわらず',
-                        target: 'にかかわらず',
-                        pos: 'N2 核心语法',
-                        meaning: '无论年龄大小，任何人都可以参加。',
-                        extra: '接续：N + に（は）かかわらず（不论……都……）'
-                    },
-                    {
-                        sentence: '彼は医者である（　　　　　）、小説家としても有名だ。',
-                        reading: 'かたわら',
-                        target: 'かたわら',
-                        pos: 'N2 兼顾语法',
-                        meaning: '他一边当医生，同时也作为小说家而闻名。',
-                        extra: '接续：Vる・Nの + かたわら（在……的同时，顺便/兼做……）'
-                    }
+                    { sentence: '約束した（　　　　　）、必ず守らなければならない。', reading: 'からには', target: 'からには', pos: 'N2 核心语法', meaning: '既然约好了，就必须遵守。', extra: '接续：Vる/Vた・Nである + からには（既然……就……）' },
+                    { sentence: 'この問題については、現在調査（　　　　　　）です。', reading: 'しつつあるところ', target: 'しつつあるところ', pos: 'N2 书面语法', meaning: '关于这个问题，目前正在逐步调查之中。', extra: '接续：Vます形 + つつある（正在不断……）' },
+                    { sentence: '年齢（　　　　　　）、誰でも参加できます。', reading: 'にかかわらず', target: 'にかかわらず', pos: 'N2 核心语法', meaning: '无论年龄大小，任何人都可以参加。', extra: '接续：N + に（は）かかわらず（不论……都……）' },
+                    { sentence: '彼は医者である（　　　　　）、小説家としても有名だ。', reading: 'かたわら', target: 'かたわら', pos: 'N2 兼顾语法', meaning: '他一边当医生，同时也作为小说家而闻名。', extra: '接续：Vる・Nの + かたわら（在……的同时，顺便/兼做……）' }
                 ],
                 N1: [
-                    {
-                        sentence: 'プロである（　　　　　）、妥協は許されない。',
-                        reading: '以上は',
-                        target: 'いじょうは',
-                        pos: 'N1 核心语法',
-                        meaning: '既然身为职业选手，就不允许妥协。',
-                        extra: '接续：Vる/Vた・Nである + 以上（は）'
-                    },
-                    {
-                        sentence: '長年の努力（　　　　　）、ついに新薬の開発に成功した。',
-                        reading: 'の末に',
-                        target: 'のすえに',
-                        pos: 'N1 结果语法',
-                        meaning: '经过多年的努力，终于成功研发了新药。',
-                        extra: '接续：Vた・Nの + 末（に）（经历……之后终于……）'
-                    },
-                    {
-                        sentence: '彼女の演技は、見る人を感動させず（　　　　　　）。',
-                        reading: 'にはおかない',
-                        target: 'にはおかない',
-                        pos: 'N1 强制感叹',
-                        meaning: '她的演技无不令人感动（不能不让人感动）。',
-                        extra: '接续：Vない形 + ずにはおかない / ないではおかない'
-                    },
-                    {
-                        sentence: '不況（　　　　　）、新入社員の採用を見送る企業が増えた。',
-                        reading: 'を余儀なくされ',
-                        target: 'をよぎなくされ',
-                        pos: 'N1 书面高阶',
-                        meaning: '由于经济不景气，被迫放弃招聘应届生的企业增多了。',
-                        extra: '接续：N + を余儀なくされる（被迫……，不得已……）'
-                    }
+                    { sentence: 'プロである（　　　　　）、妥協は許されない。', reading: '以上は', target: 'いじょうは', pos: 'N1 核心语法', meaning: '既然身为职业选手，就不允许妥协。', extra: '接续：Vる/Vた・Nである + 以上（は）' },
+                    { sentence: '長年の努力（　　　　　）、ついに新薬の開発に成功した。', reading: 'の末に', target: 'のすえに', pos: 'N1 结果语法', meaning: '经过多年的努力，终于成功研发了新药。', extra: '接续：Vた・Nの + 末（に）（经历……之后终于……）' },
+                    { sentence: '彼女の演技は、見る人を感動させず（　　　　　　）。', reading: 'にはおかない', target: 'にはおかない', pos: 'N1 强制感叹', meaning: '她的演技无不令人感动（不能不让人感动）。', extra: '接续：Vない形 + ずにはおかない / ないではおかない' },
+                    { sentence: '不況（　　　　　）、新入社員の採用を見送る企業が増えた。', reading: 'を余儀なくされ', target: 'をよぎなくされ', pos: 'N1 书面高阶', meaning: '由于经济不景气，被迫放弃招聘应届生的企业增多了。', extra: '接续：N + を余儀なくされる（被迫……，不得已……）' }
                 ]
             }
         };
 
         /**
          * ============================================================================
-         * 3. 应用状态管理与持久化 (localStorage)
+         * 3. 应用状态与双通道联网词库同步引擎
          * ============================================================================
          */
-        const STORAGE_KEY = 'kanatype_jlpt_state_v1';
+        const STORAGE_KEY = 'kanatype_jlpt_v2_state';
+        const CLOUD_CACHE_KEY = 'kanatype_jlpt_v2_cloud_cache';
+        const ROUND_SIZE = 20; // 每组练习抽题数量
 
         const state = {
-            level: 'N5',          // 当前等级: N5 | N4 | N3 | N2 | N1
-            mode: 'word',         // 当前模式: word | grammar | mistake
-            blindMode: false,     // 盲打模式: true 隐藏假名提示
-            ttsEnabled: true,     // 自动发音开关
-            ttsRate: 1.0,         // 语速
+            activeView: 'typing', // 'typing' | 'browse'
+            level: 'N5',
+            mode: 'word',         // 'word' | 'grammar' | 'mistake'
+            blindMode: false,
+            ttsEnabled: true,
+            ttsRate: 1.0,
             
-            // 词库数据（可被远程/自定义导入扩充）
             db: JSON.parse(JSON.stringify(DEFAULT_DATA)),
-            
-            // 错题本数组：存储打错或跳过/犹豫过久的条目
             mistakes: [],
             
-            // 当前练习队列与索引
             queue: [],
             currentIndex: 0,
+            tokens: [],
+            tokenIndex: 0,
+            currentInput: '',
+            itemHadError: false,
+            itemStartTime: 0,
             
-            // 当前题目打字解析状态
-            tokens: [],           // 当前词的 Token 数组
-            tokenIndex: 0,        // 当前正在输入的 Token 下标
-            currentInput: '',     // 当前 Token 已敲入的正确罗马音前缀
-            itemHadError: false,  // 当前题是否发生过错误
-            itemStartTime: 0,     // 当前题开始时间戳
-            
-            // 实时统计数据
             combo: 0,
             maxCombo: 0,
             correctKeystrokes: 0,
             totalKeystrokes: 0,
             roundStartTime: Date.now(),
-            masteredCount: 0
+            masteredCount: 0,
+
+            // 浏览器视图筛选状态
+            browse: {
+                level: 'ALL',
+                type: 'all',
+                query: '',
+                maskMeaning: false,
+                maskKana: false,
+                page: 1,
+                pageSize: 50,
+                filteredItems: []
+            }
         };
 
-        // 从 localStorage 恢复学习记录与自定义词库
+        function updateCloudStatus(status, text) {
+            const dot = document.getElementById('cloud-dot');
+            const label = document.getElementById('cloud-status-text');
+            label.textContent = text;
+            dot.className = 'w-2 h-2 rounded-full ';
+            if (status === 'loading') dot.className += 'bg-amber-400 animate-pulse';
+            else if (status === 'online') dot.className += 'bg-emerald-400';
+            else dot.className += 'bg-slate-500';
+        }
+
+        function getTotalVocabCount() {
+            let count = 0;
+            ['N5', 'N4', 'N3', 'N2', 'N1'].forEach(lvl => {
+                count += (state.db.words[lvl]?.length || 0) + (state.db.grammar[lvl]?.length || 0);
+            });
+            document.getElementById('total-vocab-badge').textContent = count;
+            return count;
+        }
+
+        // 合并新词条并去重
+        function mergeVocabIntoLevel(level, newItems, type = 'words') {
+            if (!state.db[type][level]) state.db[type][level] = [];
+            const existingMap = new Map();
+            state.db[type][level].forEach(item => {
+                const key = `${item.target || item.sentence}_${item.reading}`;
+                existingMap.set(key, item);
+            });
+
+            newItems.forEach(item => {
+                if (!item.reading) return;
+                const key = `${item.target || item.sentence}_${item.reading}`;
+                // 优先保留带中文释义的本地/自定义条目
+                if (!existingMap.has(key)) {
+                    existingMap.set(key, item);
+                }
+            });
+
+            state.db[type][level] = Array.from(existingMap.values());
+        }
+
+        /**
+         * 双通道联网拉取全量 JLPT N5-N1 词库：
+         * 通道 1：优先探测同级目录 ./data/words_n5.json ~ words_n1.json 及 ./data/grammar_all.json（便于你在 GitHub 仓库放置中文词库）
+         * 通道 2：自动调用公开开源 JLPT API (jlpt-vocab-api.vercel.app) 拉取全量 8,000+ N5-N1 词汇并缓存
+         */
+        async function syncOnlineVocabulary(forceRefresh = false) {
+            updateCloudStatus('loading', '正在联网同步 N1-N5 全量词库...');
+
+            // 检查本地缓存（7天内有效）
+            if (!forceRefresh) {
+                try {
+                    const cachedRaw = localStorage.getItem(CLOUD_CACHE_KEY);
+                    if (cachedRaw) {
+                        const cached = JSON.parse(cachedRaw);
+                        if (cached && cached.timestamp && (Date.now() - cached.timestamp < 7 * 86400 * 1000)) {
+                            ['N5', 'N4', 'N3', 'N2', 'N1'].forEach(lvl => {
+                                if (cached.words?.[lvl]) mergeVocabIntoLevel(lvl, cached.words[lvl], 'words');
+                                if (cached.grammar?.[lvl]) mergeVocabIntoLevel(lvl, cached.grammar[lvl], 'grammar');
+                            });
+                            const total = getTotalVocabCount();
+                            updateCloudStatus('online', `已就绪 · 云端缓存词库共 ${total} 条`);
+                            if (state.activeView === 'browse') refreshBrowseList();
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('读取云端词库缓存失败:', e);
+                }
+            }
+
+            let loadedFromCustomData = 0;
+            let loadedFromPublicApi = 0;
+
+            // 通道 1：尝试加载同级目录 ./data/ 下的自定义中文 JSON 文件
+            const levels = ['N5', 'N4', 'N3', 'N2', 'N1'];
+            await Promise.allSettled(levels.map(async (lvl) => {
+                try {
+                    const res = await fetch(`./data/words_${lvl.toLowerCase()}.json`);
+                    if (res.ok) {
+                        const arr = await res.json();
+                        if (Array.isArray(arr)) {
+                            const formatted = arr.map(w => ({
+                                target: w.kanji || w.target || w.word || w.reading,
+                                reading: w.kana || w.reading || w.furigana,
+                                pos: w.pos || '词汇',
+                                meaning: w.meaning || w.cn || '',
+                                extra: w.example ? `例：${w.example} ${w.exampleCn || ''}` : (w.extra || '')
+                            })).filter(x => x.reading && x.meaning);
+                            mergeVocabIntoLevel(lvl, formatted, 'words');
+                            loadedFromCustomData += formatted.length;
+                        }
+                    }
+                } catch (_) {}
+            }));
+
+            try {
+                const gRes = await fetch('./data/grammar_all.json');
+                if (gRes.ok) {
+                    const gArr = await gRes.json();
+                    if (Array.isArray(gArr)) {
+                        gArr.forEach(g => {
+                            const lvl = (g.level || 'N5').toUpperCase();
+                            if (levels.includes(lvl)) {
+                                mergeVocabIntoLevel(lvl, [{
+                                    sentence: g.example || g.sentence,
+                                    reading: g.kana || g.reading,
+                                    target: g.target || g.pattern || g.kana,
+                                    pos: `${lvl} 语法`,
+                                    meaning: g.meaning || '',
+                                    extra: g.connection ? `接续：${g.connection}` : (g.extra || '')
+                                }], 'grammar');
+                            }
+                        });
+                    }
+                }
+            } catch (_) {}
+
+            // 通道 2：联网拉取公开开源 JLPT 全量词库 API
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 9000);
+                const apiRes = await fetch('https://jlpt-vocab-api.vercel.app/api/words/all', { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (apiRes.ok) {
+                    const allWords = await apiRes.json();
+                    if (Array.isArray(allWords) && allWords.length > 0) {
+                        const grouped = { N5: [], N4: [], N3: [], N2: [], N1: [] };
+                        allWords.forEach(item => {
+                            const lvlKey = `N${item.level}`;
+                            const reading = item.furigana || item.word;
+                            if (grouped[lvlKey] && reading && /[\u3040-\u30ff]/.test(reading)) {
+                                grouped[lvlKey].push({
+                                    target: item.word || reading,
+                                    reading: reading,
+                                    pos: `${lvlKey} 词汇`,
+                                    meaning: item.meaning || 'JLPT 核心词',
+                                    extra: item.romaji ? `Romaji参考: ${item.romaji}` : ''
+                                });
+                            }
+                        });
+
+                        levels.forEach(lvl => {
+                            mergeVocabIntoLevel(lvl, grouped[lvl], 'words');
+                            loadedFromPublicApi += grouped[lvl].length;
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn('公开 JLPT API 联网拉取超时或受限，已保留内置/本地词库:', err);
+            }
+
+            const total = getTotalVocabCount();
+            if (loadedFromCustomData > 0 || loadedFromPublicApi > 0) {
+                try {
+                    localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({
+                        timestamp: Date.now(),
+                        words: state.db.words,
+                        grammar: state.db.grammar
+                    }));
+                } catch (e) {
+                    console.warn('本地存储空间不足，跳过全量缓存写入');
+                }
+                updateCloudStatus('online', `联网同步完成 · 共收录 ${total} 条词条`);
+                showToast(`联网词库同步成功！当前共收录 ${total} 条单词与语法`, 'success');
+            } else {
+                updateCloudStatus('offline', `离线精选模式 · 共 ${total} 条中文词条`);
+            }
+
+            if (state.activeView === 'browse') refreshBrowseList();
+        }
+
         function loadSavedState() {
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
@@ -788,31 +896,24 @@
                     const parsed = JSON.parse(raw);
                     if (parsed.mistakes) state.mistakes = parsed.mistakes;
                     if (typeof parsed.masteredCount === 'number') state.masteredCount = parsed.masteredCount;
-                    if (parsed.customDb) state.db = parsed.customDb;
                     if (parsed.level) state.level = parsed.level;
                 }
-            } catch (e) {
-                console.warn('读取本地存档失败:', e);
-            }
+            } catch (e) {}
         }
 
-        // 保存状态到 localStorage
         function saveState() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify({
                     mistakes: state.mistakes,
                     masteredCount: state.masteredCount,
-                    customDb: state.db,
                     level: state.level
                 }));
-            } catch (e) {
-                console.warn('保存本地存档失败:', e);
-            }
+            } catch (e) {}
         }
 
         /**
          * ============================================================================
-         * 4. UI 提示 (Toast) 与 Web Speech API 日语语音合成
+         * 4. Toast 提示与 Web Speech API 日语语音合成
          * ============================================================================
          */
         function showToast(message, type = 'info') {
@@ -828,46 +929,34 @@
             toast.textContent = message;
             container.appendChild(toast);
 
-            requestAnimationFrame(() => {
-                toast.classList.remove('translate-x-4', 'opacity-0');
-            });
-
+            requestAnimationFrame(() => toast.classList.remove('translate-x-4', 'opacity-0'));
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
-            }, 2600);
+            }, 2500);
         }
 
-        // 朗读日语发音
         function speakJapanese(text, force = false) {
             if (!force && !state.ttsEnabled) return;
             if (!('speechSynthesis' in window)) return;
-
             try {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'ja-JP';
                 utterance.rate = state.ttsRate;
-
-                // 优先选择原生日语语音包
                 const voices = window.speechSynthesis.getVoices();
                 const jpVoice = voices.find(v => v.lang.includes('ja') || v.lang.includes('JP'));
                 if (jpVoice) utterance.voice = jpVoice;
-
                 window.speechSynthesis.speak(utterance);
-            } catch (e) {
-                console.warn('TTS 播报异常:', e);
-            }
+            } catch (e) {}
         }
-
-        // 预加载语音列表
         if ('speechSynthesis' in window) {
             window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
         }
 
         /**
          * ============================================================================
-         * 5. 题目队列构建与渲染引擎
+         * 5. 打字练习队列与渲染逻辑
          * ============================================================================
          */
         function shuffleArray(arr) {
@@ -879,24 +968,29 @@
             return copy;
         }
 
-        function startNewRound() {
+        function startNewRound(customQueue = null, customTitle = null) {
             let sourceList = [];
             const deckTitleEl = document.getElementById('current-deck-title');
 
-            if (state.mode === 'mistake') {
+            if (customQueue && customQueue.length > 0) {
+                sourceList = customQueue;
+                deckTitleEl.textContent = customTitle || '自定义特训队列';
+            } else if (state.mode === 'mistake') {
                 if (state.mistakes.length === 0) {
                     showToast('太棒了！当前错题本为空，已自动切回单词模式。', 'success');
                     switchMode('word');
                     return;
                 }
-                sourceList = shuffleArray(state.mistakes);
-                deckTitleEl.textContent = `错题强化复习库 (${sourceList.length} 题)`;
+                sourceList = shuffleArray(state.mistakes).slice(0, ROUND_SIZE);
+                deckTitleEl.textContent = `错题强化复习库 (${state.mistakes.length} 题)`;
             } else if (state.mode === 'word') {
-                sourceList = shuffleArray(state.db.words[state.level] || []);
-                deckTitleEl.textContent = `JLPT ${state.level} 核心词汇`;
+                const fullPool = state.db.words[state.level] || [];
+                sourceList = shuffleArray(fullPool).slice(0, ROUND_SIZE);
+                deckTitleEl.textContent = `JLPT ${state.level} 词汇库 (共 ${fullPool.length} 词)`;
             } else if (state.mode === 'grammar') {
-                sourceList = shuffleArray(state.db.grammar[state.level] || []);
-                deckTitleEl.textContent = `JLPT ${state.level} 语法例句填空`;
+                const fullPool = state.db.grammar[state.level] || [];
+                sourceList = shuffleArray(fullPool).slice(0, ROUND_SIZE);
+                deckTitleEl.textContent = `JLPT ${state.level} 语法填空 (共 ${fullPool.length} 条)`;
             }
 
             if (sourceList.length === 0) {
@@ -926,28 +1020,19 @@
             state.itemHadError = false;
             state.itemStartTime = Date.now();
 
-            // 更新进度条
             const total = state.queue.length;
             const currentNum = state.currentIndex + 1;
             document.getElementById('progress-text').textContent = `${currentNum} / ${total}`;
             document.getElementById('progress-bar').style.width = `${(currentNum / total) * 100}%`;
 
-            // 更新卡片左上角标签
             document.getElementById('card-level-badge').textContent = item.level || state.level;
-            document.getElementById('card-pos-badge').textContent = item.pos || (state.mode === 'grammar' ? '语法' : '词汇');
+            document.getElementById('card-pos-badge').textContent = item.pos || (item.sentence ? '语法' : '词汇');
 
             const isMistake = state.mistakes.some(m => m.reading === item.reading && (m.target === item.target || m.sentence === item.sentence));
-            const mistakeTag = document.getElementById('card-mistake-tag');
-            if (isMistake) {
-                mistakeTag.classList.remove('hidden');
-            } else {
-                mistakeTag.classList.add('hidden');
-            }
+            document.getElementById('card-mistake-tag').classList.toggle('hidden', !isMistake);
 
-            // 更新主展示区（单词模式 vs 语法挖空模式）
             const mainDisplay = document.getElementById('main-display');
             if (item.sentence) {
-                // 语法例句挖空：将（　　　）替换为高亮动态槽位
                 const parts = item.sentence.split(/（\s*）|\(\s*\)/);
                 if (parts.length >= 2) {
                     mainDisplay.innerHTML = `
@@ -962,14 +1047,12 @@
                 mainDisplay.textContent = item.target;
             }
 
-            // 更新中文释义与补充说明
             document.getElementById('meaning-display').textContent = item.meaning;
             document.getElementById('extra-info-display').textContent = item.extra || '';
 
             renderKanaTokens();
         }
 
-        // 渲染假名字符与实时罗马音状态
         function renderKanaTokens() {
             const container = document.getElementById('kana-chars');
             const romajiTypedEl = document.getElementById('romaji-typed');
@@ -979,131 +1062,97 @@
             state.tokens.forEach((tok, idx) => {
                 const span = document.createElement('span');
                 span.className = 'px-1 py-0.5 rounded-lg transition-all duration-150 ';
-
                 if (idx < state.tokenIndex) {
-                    // 已完成假名：翡翠绿高亮
                     span.textContent = tok.display;
                     span.className += 'text-emerald-400 bg-emerald-500/10';
                 } else if (idx === state.tokenIndex) {
-                    // 当前正在输入假名
                     span.textContent = state.blindMode ? '●' : tok.display;
                     span.className += 'text-white bg-indigo-600/40 border-b-2 border-indigo-400 scale-105';
                 } else {
-                    // 未输入假名（盲打模式下隐藏为圆点）
                     span.textContent = state.blindMode ? '・' : tok.display;
                     span.className += 'text-slate-500';
                 }
                 container.appendChild(span);
             });
 
-            // 同步更新语法例句槽位中已打出的部分
             const grammarSlot = document.getElementById('grammar-slot');
             if (grammarSlot) {
                 const completedKana = state.tokens.slice(0, state.tokenIndex).map(t => t.display).join('');
                 grammarSlot.textContent = completedKana || '？';
-                if (completedKana) {
-                    grammarSlot.classList.add('text-emerald-300', 'border-emerald-400');
-                }
+                if (completedKana) grammarSlot.classList.add('text-emerald-300', 'border-emerald-400');
             }
 
-            // 更新罗马音缓冲区展示
             romajiTypedEl.textContent = state.currentInput;
-
             if (state.tokenIndex < state.tokens.length) {
                 const currTok = state.tokens[state.tokenIndex];
-                // 找到匹配当前输入前缀的推荐罗马音拼写
                 const matchedOpt = currTok.romajiOptions.find(opt => opt.startsWith(state.currentInput)) || currTok.romajiOptions[0];
-                const remainingHint = state.blindMode ? '' : matchedOpt.slice(state.currentInput.length);
-                romajiHintEl.textContent = remainingHint;
+                romajiHintEl.textContent = state.blindMode ? '' : matchedOpt.slice(state.currentInput.length);
             } else {
                 romajiHintEl.textContent = '';
             }
         }
 
-        /**
-         * ============================================================================
-         * 6. 核心键盘打字匹配算法
-         * ============================================================================
-         */
         function handleCharInput(rawChar) {
-            if (!rawChar || state.tokenIndex >= state.tokens.length) return;
+            if (state.activeView !== 'typing' || !rawChar || state.tokenIndex >= state.tokens.length) return;
             const ch = rawChar.toLowerCase();
-
-            // 仅接受英文字母、长音横杠 '-' 和撇号 "'"
             if (!/^[a-z\-']$/.test(ch)) return;
 
             state.totalKeystrokes += 1;
             const currTok = state.tokens[state.tokenIndex];
             const candidate = state.currentInput + ch;
-
-            // 检查是否有任意合法罗马音变体以 candidate 开头
             const matchingOptions = currTok.romajiOptions.filter(opt => opt.startsWith(candidate));
 
             if (matchingOptions.length > 0) {
-                // 匹配成功！
                 state.correctKeystrokes += 1;
                 state.currentInput = candidate;
 
-                // 检查是否已完整匹配某个罗马音变体（注意区分 'n' 与 'nn'：如果后面还有 'nn' 且用户只打了 'n'，需判断是否需要等待或直接推进）
                 const exactMatch = matchingOptions.includes(candidate);
                 const hasLongerOption = matchingOptions.some(opt => opt.length > candidate.length);
 
                 if (exactMatch && !hasLongerOption) {
-                    // 当前假名彻底拼写完成，推进到下一个假名
                     state.tokenIndex += 1;
                     state.currentInput = '';
-                } else if (exactMatch && hasLongerOption && currTok.display === 'ん' && candidate === 'n') {
-                    // 特殊优化：当「ん」允许单打 'n' 时，如果用户直接按了下一个假名的首字母（非元音/y/n），智能自动结算「ん」并把该字母传递给下一个假名！
-                    // 这里保持等待，在 else 分支做回退自动结算处理
                 }
 
                 renderKanaTokens();
                 updateStatsUI();
 
-                // 检查整词/整句是否全部打完
                 if (state.tokenIndex >= state.tokens.length) {
                     onItemCompleted();
                 }
             } else {
-                // 特殊智能处理：如果当前处于「ん」且已输入 'n'，而新输入的字母正好是下一个假名的合法开头，则自动结算「ん」并处理新字母！
                 if (currTok.display === 'ん' && state.currentInput === 'n' && currTok.romajiOptions.includes('n')) {
                     state.tokenIndex += 1;
                     state.currentInput = '';
-                    state.totalKeystrokes -= 1; // 避免重复计次
+                    state.totalKeystrokes -= 1;
                     handleCharInput(ch);
                     return;
                 }
 
-                // 输入错误：触发震动动画、红色提示、重置连击并记入错题本
                 state.itemHadError = true;
                 state.combo = 0;
                 recordMistake(state.queue[state.currentIndex]);
 
                 const card = document.getElementById('typing-card');
                 card.classList.remove('animate-shake');
-                void card.offsetWidth; // 强制重绘以重新触发动画
+                void card.offsetWidth;
                 card.classList.add('animate-shake');
 
                 const wrapper = document.getElementById('kana-display-wrapper');
                 wrapper.classList.add('border-rose-500', 'bg-rose-950/30');
-                setTimeout(() => {
-                    wrapper.classList.remove('border-rose-500', 'bg-rose-950/30');
-                }, 280);
+                setTimeout(() => wrapper.classList.remove('border-rose-500', 'bg-rose-950/30'), 280);
 
                 updateStatsUI();
             }
         }
 
-        // 单个词/语法练习完成
         function onItemCompleted() {
             const item = state.queue[state.currentIndex];
             const elapsedSec = (Date.now() - state.itemStartTime) / 1000;
 
-            // 如果犹豫时间过长（例如超过 12 秒）也自动加入重点复习库
             if (elapsedSec > 12 && !state.itemHadError) {
                 recordMistake(item);
             } else if (!state.itemHadError && state.mode === 'mistake') {
-                // 在错题模式下全对通过，将其移出错题本
                 removeMistake(item);
             }
 
@@ -1113,13 +1162,11 @@
             saveState();
             updateStatsUI();
 
-            // 语法模式下补全完整句子读音，单词模式下朗读单词
             const textToSpeak = item.sentence
                 ? item.sentence.replace(/（\s*）|\(\s*\)/, item.target)
                 : item.reading;
             speakJapanese(textToSpeak);
 
-            // 短暂停顿展示全绿完成态后进入下一题
             setTimeout(() => {
                 if (state.currentIndex + 1 < state.queue.length) {
                     state.currentIndex += 1;
@@ -1127,14 +1174,9 @@
                 } else {
                     showRoundSummary();
                 }
-            }, 380);
+            }, 360);
         }
 
-        /**
-         * ============================================================================
-         * 7. 错题本管理与统计仪表盘计算
-         * ============================================================================
-         */
         function recordMistake(item) {
             if (!item) return;
             const exists = state.mistakes.some(m => m.reading === item.reading && (m.target === item.target || m.sentence === item.sentence));
@@ -1157,11 +1199,8 @@
 
         function calculateMetrics() {
             const elapsedMinutes = Math.max((Date.now() - state.roundStartTime) / 60000, 0.05);
-            // 标准 WPM 按每 5 个有效字符计 1 词
             const wpm = Math.round((state.correctKeystrokes / 5) / elapsedMinutes);
-            const acc = state.totalKeystrokes === 0
-                ? 100
-                : Math.round((state.correctKeystrokes / state.totalKeystrokes) * 100);
+            const acc = state.totalKeystrokes === 0 ? 100 : Math.round((state.correctKeystrokes / state.totalKeystrokes) * 100);
             return { wpm: Math.min(wpm, 250), acc };
         }
 
@@ -1188,20 +1227,152 @@
 
         /**
          * ============================================================================
-         * 8. 交互事件绑定（键盘监听、模式切换、云端词库导入）
+         * 6. 词库与语法浏览器视图渲染逻辑（搜索、等级筛选、背词遮罩、分页）
          * ============================================================================
          */
+        function refreshBrowseList() {
+            const levels = state.browse.level === 'ALL' ? ['N5', 'N4', 'N3', 'N2', 'N1'] : [state.browse.level];
+            let pool = [];
+
+            if (state.browse.type === 'mistake') {
+                pool = state.mistakes.filter(item => state.browse.level === 'ALL' || (item.level || 'N5') === state.browse.level)
+                    .map(item => ({ ...item, _itemType: item.sentence ? 'grammar' : 'word' }));
+            } else {
+                levels.forEach(lvl => {
+                    if (state.browse.type === 'all' || state.browse.type === 'word') {
+                        (state.db.words[lvl] || []).forEach(w => pool.push({ ...w, level: lvl, _itemType: 'word' }));
+                    }
+                    if (state.browse.type === 'all' || state.browse.type === 'grammar') {
+                        (state.db.grammar[lvl] || []).forEach(g => pool.push({ ...g, level: lvl, _itemType: 'grammar' }));
+                    }
+                });
+            }
+
+            const q = state.browse.query.trim().toLowerCase();
+            if (q) {
+                pool = pool.filter(item => {
+                    const textBlob = `${item.target || ''} ${item.sentence || ''} ${item.reading || ''} ${item.meaning || ''} ${item.extra || ''}`.toLowerCase();
+                    return textBlob.includes(q);
+                });
+            }
+
+            state.browse.filteredItems = pool;
+            state.browse.page = 1;
+            document.getElementById('browse-count').textContent = pool.length;
+            renderBrowsePage();
+        }
+
+        function renderBrowsePage() {
+            const container = document.getElementById('browse-list-container');
+            const { filteredItems, page, pageSize, maskMeaning, maskKana } = state.browse;
+            const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+            if (state.browse.page > totalPages) state.browse.page = totalPages;
+
+            const startIdx = (state.browse.page - 1) * pageSize;
+            const slice = filteredItems.slice(startIdx, startIdx + pageSize);
+
+            document.getElementById('browse-page-info').textContent = `第 ${state.browse.page} / ${totalPages} 页`;
+            document.getElementById('browse-prev-page').disabled = state.browse.page <= 1;
+            document.getElementById('browse-next-page').disabled = state.browse.page >= totalPages;
+
+            if (slice.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-16 text-slate-500 text-sm">没有找到匹配的单词或语法记录，请尝试更换搜索词或切换等级。</div>`;
+                return;
+            }
+
+            container.innerHTML = slice.map((item, idx) => {
+                const isGrammar = item._itemType === 'grammar';
+                const titleText = isGrammar ? item.sentence : item.target;
+                const kanaText = item.reading;
+                const badgeColor = isGrammar
+                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                    : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+
+                return `
+                    <div class="bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 transition-all flex flex-col justify-between gap-3">
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-2 py-0.5 rounded-md text-[11px] font-bold border ${badgeColor}">${item.level}</span>
+                                    <span class="px-2 py-0.5 rounded-md text-[11px] bg-slate-800 text-slate-400">${item.pos || (isGrammar ? '语法' : '词汇')}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="speakBrowseItem(${startIdx + idx})" title="朗读发音" class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-300 transition-all">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                                    </button>
+                                    <button onclick="practiceSingleItem(${startIdx + idx})" class="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-medium transition-all">
+                                        练习此条
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="jp-text text-lg sm:text-xl font-bold text-white leading-snug mb-1">
+                                ${titleText}
+                            </div>
+                            <div class="jp-text text-sm text-emerald-400 font-medium mb-2 ${maskKana ? 'mask-blur' : ''}">
+                                ${kanaText}
+                            </div>
+                            <div class="text-sm text-amber-300/95 ${maskMeaning ? 'mask-blur' : ''}">
+                                ${item.meaning}
+                            </div>
+                        </div>
+
+                        ${item.extra ? `<div class="text-xs text-slate-400 pt-2 border-t border-slate-800/80">${item.extra}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 浏览器卡片全局回调
+        window.speakBrowseItem = function(globalIdx) {
+            const item = state.browse.filteredItems[globalIdx];
+            if (!item) return;
+            const text = item.sentence ? item.sentence.replace(/（\s*）|\(\s*\)/, item.target) : item.reading;
+            speakJapanese(text, true);
+        };
+
+        window.practiceSingleItem = function(globalIdx) {
+            const item = state.browse.filteredItems[globalIdx];
+            if (!item) return;
+            switchMainView('typing');
+            startNewRound([item], `单条特训：${item.target || item.reading}`);
+        };
+
+        /**
+         * ============================================================================
+         * 7. 导航视图切换与事件绑定
+         * ============================================================================
+         */
+        function switchMainView(viewName) {
+            state.activeView = viewName;
+            const typingSec = document.getElementById('view-typing');
+            const browseSec = document.getElementById('view-browse');
+            const navTyping = document.getElementById('nav-typing-view');
+            const navBrowse = document.getElementById('nav-browse-view');
+
+            if (viewName === 'typing') {
+                typingSec.classList.remove('hidden');
+                browseSec.classList.add('hidden');
+                navTyping.className = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow flex items-center gap-1.5';
+                navBrowse.className = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-1.5';
+            } else {
+                typingSec.classList.add('hidden');
+                browseSec.classList.remove('hidden');
+                navBrowse.className = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow flex items-center gap-1.5';
+                navTyping.className = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-1.5';
+                refreshBrowseList();
+            }
+        }
+
         function switchLevel(newLevel) {
             state.level = newLevel;
             if (state.mode === 'mistake') state.mode = 'word';
             saveState();
 
             document.querySelectorAll('.level-btn').forEach(btn => {
-                if (btn.dataset.level === newLevel) {
-                    btn.className = 'level-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow';
-                } else {
-                    btn.className = 'level-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition-all';
-                }
+                btn.className = btn.dataset.level === newLevel
+                    ? 'level-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow'
+                    : 'level-btn px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all';
             });
             updateModeButtonsUI();
             startNewRound();
@@ -1214,60 +1385,40 @@
         }
 
         function updateModeButtonsUI() {
-            const modes = ['word', 'grammar', 'mistake'];
-            modes.forEach(m => {
+            ['word', 'grammar', 'mistake'].forEach(m => {
                 const btn = document.getElementById(`mode-${m}`);
-                if (m === state.mode) {
-                    btn.className = 'mode-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-slate-800 text-indigo-300 border border-slate-700 flex items-center gap-1';
-                } else {
-                    btn.className = 'mode-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition-all flex items-center gap-1';
-                }
+                btn.className = m === state.mode
+                    ? 'mode-btn px-3 py-1 rounded-lg text-xs font-medium transition-all bg-slate-800 text-indigo-300 border border-slate-700 flex items-center gap-1'
+                    : 'mode-btn px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all flex items-center gap-1';
             });
         }
 
         function toggleBlindMode() {
             state.blindMode = !state.blindMode;
-            const openIcon = document.getElementById('eye-open-icon');
-            const closedIcon = document.getElementById('eye-closed-icon');
-            const label = document.getElementById('blind-label');
-
-            if (state.blindMode) {
-                openIcon.classList.add('hidden');
-                closedIcon.classList.remove('hidden');
-                label.textContent = '盲打中';
-                showToast('已开启盲打模式：隐藏假名提示，考验汉字读音记忆！', 'info');
-            } else {
-                openIcon.classList.remove('hidden');
-                closedIcon.classList.add('hidden');
-                label.textContent = '提示开';
-                showToast('已恢复假名拼写提示', 'info');
-            }
+            document.getElementById('eye-open-icon').classList.toggle('hidden', state.blindMode);
+            document.getElementById('eye-closed-icon').classList.toggle('hidden', !state.blindMode);
+            document.getElementById('blind-label').textContent = state.blindMode ? '盲打中' : '提示开';
+            showToast(state.blindMode ? '已开启盲打模式：隐藏假名提示' : '已恢复假名拼写提示', 'info');
             renderKanaTokens();
         }
 
-        // 全局键盘快捷键与打字捕获
+        // 全局键盘事件监听
         document.addEventListener('keydown', (e) => {
-            // 如果正在弹窗输入框内输入，不拦截键盘事件
+            if (state.activeView !== 'typing') return;
             const activeTag = document.activeElement ? document.activeElement.tagName : '';
-            if (activeTag === 'TEXTAREA' || (activeTag === 'INPUT' && document.activeElement.id !== 'mobile-hidden-input')) {
-                return;
-            }
+            if (activeTag === 'TEXTAREA' || (activeTag === 'INPUT' && document.activeElement.id !== 'mobile-hidden-input')) return;
             if (!document.getElementById('import-modal').classList.contains('hidden')) return;
             if (!document.getElementById('summary-modal').classList.contains('hidden')) {
-                if (e.key === 'Enter') {
-                    document.getElementById('btn-next-round').click();
-                }
+                if (e.key === 'Enter') document.getElementById('btn-next-round').click();
                 return;
             }
 
-            // Ctrl + H: 切换盲打提示
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
                 e.preventDefault();
                 toggleBlindMode();
                 return;
             }
 
-            // Tab: 重听当前日语发音
             if (e.key === 'Tab') {
                 e.preventDefault();
                 const item = state.queue[state.currentIndex];
@@ -1278,7 +1429,6 @@
                 return;
             }
 
-            // Enter: 跳过当前词
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const item = state.queue[state.currentIndex];
@@ -1295,7 +1445,6 @@
                 return;
             }
 
-            // Backspace: 清除当前假名已输一半的罗马音缓冲区
             if (e.key === 'Backspace') {
                 e.preventDefault();
                 if (state.currentInput.length > 0) {
@@ -1305,34 +1454,32 @@
                 return;
             }
 
-            // 普通单字符按键输入
             if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
                 e.preventDefault();
                 handleCharInput(e.key);
             }
         });
 
-        // 移动端虚拟输入框同步捕获
-        const mobileInput = document.getElementById('mobile-hidden-input');
-        mobileInput.addEventListener('input', (e) => {
+        // 移动端输入框同步
+        document.getElementById('mobile-hidden-input').addEventListener('input', (e) => {
             const val = e.target.value;
             if (val) {
-                for (const ch of val) {
-                    handleCharInput(ch);
-                }
+                for (const ch of val) handleCharInput(ch);
                 e.target.value = '';
             }
         });
 
-        // 按钮事件绑定
+        // 导航与按钮事件绑定
+        document.getElementById('nav-typing-view').addEventListener('click', () => switchMainView('typing'));
+        document.getElementById('nav-browse-view').addEventListener('click', () => switchMainView('browse'));
+
         document.querySelectorAll('.level-btn').forEach(btn => {
             btn.addEventListener('click', () => switchLevel(btn.dataset.level));
         });
-
         document.getElementById('mode-word').addEventListener('click', () => switchMode('word'));
         document.getElementById('mode-grammar').addEventListener('click', () => switchMode('grammar'));
         document.getElementById('mode-mistake').addEventListener('click', () => switchMode('mistake'));
-
+        document.getElementById('reshuffle-round-btn').addEventListener('click', () => startNewRound());
         document.getElementById('toggle-blind').addEventListener('click', toggleBlindMode);
 
         document.getElementById('toggle-tts').addEventListener('click', () => {
@@ -1345,7 +1492,6 @@
 
         document.getElementById('tts-rate').addEventListener('change', (e) => {
             state.ttsRate = parseFloat(e.target.value);
-            showToast(`朗读语速已调整为 ${state.ttsRate}x`, 'info');
         });
 
         document.getElementById('play-audio-btn').addEventListener('click', () => {
@@ -1369,7 +1515,68 @@
             }
         });
 
-        // 战绩弹窗按钮
+        // 浏览器视图筛选事件
+        document.querySelectorAll('.b-level-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.browse.level = btn.dataset.blevel;
+                document.querySelectorAll('.b-level-btn').forEach(b => {
+                    b.className = b.dataset.blevel === state.browse.level
+                        ? 'b-level-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white'
+                        : 'b-level-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white';
+                });
+                refreshBrowseList();
+            });
+        });
+
+        document.getElementById('browse-type-filter').addEventListener('change', (e) => {
+            state.browse.type = e.target.value;
+            refreshBrowseList();
+        });
+
+        document.getElementById('browse-search-input').addEventListener('input', (e) => {
+            state.browse.query = e.target.value;
+            refreshBrowseList();
+        });
+
+        document.getElementById('browse-mask-meaning').addEventListener('click', (e) => {
+            state.browse.maskMeaning = !state.browse.maskMeaning;
+            e.target.classList.toggle('bg-indigo-600', state.browse.maskMeaning);
+            e.target.classList.toggle('text-white', state.browse.maskMeaning);
+            renderBrowsePage();
+        });
+
+        document.getElementById('browse-mask-kana').addEventListener('click', (e) => {
+            state.browse.maskKana = !state.browse.maskKana;
+            e.target.classList.toggle('bg-indigo-600', state.browse.maskKana);
+            e.target.classList.toggle('text-white', state.browse.maskKana);
+            renderBrowsePage();
+        });
+
+        document.getElementById('browse-prev-page').addEventListener('click', () => {
+            if (state.browse.page > 1) {
+                state.browse.page -= 1;
+                renderBrowsePage();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+
+        document.getElementById('browse-next-page').addEventListener('click', () => {
+            state.browse.page += 1;
+            renderBrowsePage();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        document.getElementById('browse-practice-filtered').addEventListener('click', () => {
+            if (state.browse.filteredItems.length === 0) {
+                showToast('当前筛选列表为空，无法开始练习', 'warning');
+                return;
+            }
+            const subset = shuffleArray(state.browse.filteredItems).slice(0, ROUND_SIZE);
+            switchMainView('typing');
+            startNewRound(subset, `词库筛选特训 (${subset.length} 题)`);
+        });
+
+        // 战绩弹窗与导入弹窗事件
         document.getElementById('btn-next-round').addEventListener('click', () => {
             document.getElementById('summary-modal').classList.add('hidden');
             document.getElementById('summary-modal').classList.remove('flex');
@@ -1382,7 +1589,6 @@
             switchMode('mistake');
         });
 
-        // 云端词库导入弹窗逻辑
         const importModal = document.getElementById('import-modal');
         document.getElementById('open-import-modal').addEventListener('click', () => {
             importModal.classList.remove('hidden');
@@ -1393,6 +1599,10 @@
             importModal.classList.remove('flex');
         });
 
+        document.getElementById('force-cloud-sync-btn').addEventListener('click', () => {
+            syncOnlineVocabulary(true);
+        });
+
         document.getElementById('fill-sample-btn').addEventListener('click', () => {
             document.getElementById('custom-import-text').value =
 `桜 | さくら | 名词 | 樱花
@@ -1401,50 +1611,52 @@
 約束を守る | やくそくをまもる | 惯用短语 | 遵守约定`;
         });
 
-        // 远程 JSON 词库联网拉取
         document.getElementById('fetch-remote-btn').addEventListener('click', async () => {
             const url = document.getElementById('remote-url-input').value.trim();
-            if (!url) {
-                showToast('请输入有效的 JSON 词库 URL 地址', 'warning');
-                return;
-            }
+            if (!url) return showToast('请输入有效的 JSON 词库 URL 地址', 'warning');
             try {
                 showToast('正在联网拉取云端词库...', 'info');
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 if (!Array.isArray(data)) throw new Error('JSON 根节点必须是数组');
-
-                const validItems = data.filter(item => item.target && item.reading && item.meaning);
-                if (validItems.length === 0) throw new Error('未检测到有效词条字段 (target/reading/meaning)');
-
-                state.db.words[state.level] = [...validItems, ...state.db.words[state.level]];
-                saveState();
+                const validItems = data.filter(item => (item.target || item.kanji) && (item.reading || item.kana) && item.meaning)
+                    .map(item => ({
+                        target: item.target || item.kanji,
+                        reading: item.reading || item.kana,
+                        pos: item.pos || '云端导入',
+                        meaning: item.meaning,
+                        extra: item.extra || ''
+                    }));
+                if (validItems.length === 0) throw new Error('未检测到有效词条字段');
+                mergeVocabIntoLevel(state.level, validItems, 'words');
+                getTotalVocabCount();
                 importModal.classList.add('hidden');
                 importModal.classList.remove('flex');
-                switchMode('word');
+                startNewRound();
                 showToast(`成功从云端导入 ${validItems.length} 条词汇到 ${state.level}！`, 'success');
             } catch (err) {
                 showToast(`联网拉取失败: ${err.message}`, 'error');
             }
         });
 
-        // 本地自定义文本/JSON导入
         document.getElementById('import-custom-btn').addEventListener('click', () => {
             const rawText = document.getElementById('custom-import-text').value.trim();
-            if (!rawText) {
-                showToast('请先粘贴需要导入的单词或 JSON 内容', 'warning');
-                return;
-            }
-
+            if (!rawText) return showToast('请先粘贴需要导入的单词或 JSON 内容', 'warning');
             try {
                 let imported = [];
                 if (rawText.startsWith('[')) {
                     const parsed = JSON.parse(rawText);
-                    imported = parsed.filter(x => x.target && x.reading && x.meaning);
+                    imported = parsed.filter(x => (x.target || x.kanji) && (x.reading || x.kana) && x.meaning)
+                        .map(x => ({
+                            target: x.target || x.kanji,
+                            reading: x.reading || x.kana,
+                            pos: x.pos || '自定义',
+                            meaning: x.meaning,
+                            extra: x.extra || ''
+                        }));
                 } else {
-                    const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-                    lines.forEach(line => {
+                    rawText.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
                         const parts = line.split('|').map(p => p.trim());
                         if (parts.length >= 3) {
                             imported.push({
@@ -1457,16 +1669,12 @@
                         }
                     });
                 }
-
-                if (imported.length === 0) {
-                    throw new Error('格式未能识别，请参照示例格式输入');
-                }
-
-                state.db.words[state.level] = [...imported, ...state.db.words[state.level]];
-                saveState();
+                if (imported.length === 0) throw new Error('格式未能识别，请参照示例格式输入');
+                mergeVocabIntoLevel(state.level, imported, 'words');
+                getTotalVocabCount();
                 importModal.classList.add('hidden');
                 importModal.classList.remove('flex');
-                switchMode('word');
+                startNewRound();
                 showToast(`成功导入 ${imported.length} 条自定义词汇！`, 'success');
             } catch (err) {
                 showToast(`导入失败：${err.message}`, 'error');
@@ -1474,16 +1682,21 @@
         });
 
         document.getElementById('reset-default-db').addEventListener('click', () => {
+            localStorage.removeItem(CLOUD_CACHE_KEY);
             state.db = JSON.parse(JSON.stringify(DEFAULT_DATA));
-            saveState();
+            getTotalVocabCount();
             startNewRound();
-            showToast('已恢复默认内置 JLPT 词库', 'info');
+            if (state.activeView === 'browse') refreshBrowseList();
+            showToast('已清除云端缓存并恢复内置精选词库', 'info');
         });
 
-        // 初始化启动应用
+        // 启动入口
         window.addEventListener('DOMContentLoaded', () => {
             loadSavedState();
+            getTotalVocabCount();
             switchLevel(state.level);
+            // 后台自动触发双通道联网词库同步
+            syncOnlineVocabulary(false);
         });
     </script>
 </body>
